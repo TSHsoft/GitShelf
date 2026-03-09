@@ -15,11 +15,9 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
-              return 'react-vendor';
-            }
+            // Split out large, independent leaf libraries
             if (id.includes('octokit') || id.includes('@octokit')) {
-              return 'octokit-vendor';
+              return 'github-vendor';
             }
             if (
               id.includes('react-markdown') ||
@@ -31,25 +29,10 @@ export default defineConfig({
             ) {
               return 'markdown-vendor';
             }
-            if (id.includes('@dnd-kit')) {
-              return 'dnd-vendor';
-            }
-            // Group other stable UI/utility libraries
-            if (
-              id.includes('lucide-react') ||
-              id.includes('sonner') ||
-              id.includes('zod') ||
-              id.includes('zustand') ||
-              id.includes('idb') ||
-              id.includes('dompurify') ||
-              id.includes('nanoid') ||
-              id.includes('@tanstack/react-virtual')
-            ) {
-              return 'utils-vendor';
-            }
           }
         },
       },
     },
+    chunkSizeWarningLimit: 600,
   },
 })
