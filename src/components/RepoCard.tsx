@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Star, ExternalLink, Trash2, Tag as TagIcon, Archive, GitBranch, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Star, ExternalLink, Trash2, Tag as TagIcon, Archive, GitBranch, AlertTriangle, RefreshCw, Heart } from 'lucide-react'
 import type { Repository } from '@/types'
 import { useStore } from '@/store/useStore'
 import { formatStars } from '@/lib/github'
@@ -15,7 +15,7 @@ interface RepoCardProps {
 }
 
 export function RepoCard({ repo, isActive, onClick }: RepoCardProps) {
-    const { data, removeRepository, syncRepository, syncingRepoIds, githubToken } = useStore()
+    const { data, removeRepository, syncRepository, toggleFavorite, syncingRepoIds, githubToken } = useStore()
     const tags = repo.tags.map((id) => data.tags[id]).filter(Boolean)
     const [isExpanded, setIsExpanded] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -50,11 +50,20 @@ export function RepoCard({ repo, isActive, onClick }: RepoCardProps) {
                     <div className="flex items-center gap-0.5">
                         <button
                             onClick={(e) => { e.stopPropagation(); syncRepository(repo.id) }}
-                            className={`rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors ${!githubToken ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            disabled={isSyncing || !githubToken}
-                            title={!githubToken ? "GitHub token required to sync" : "Sync Repository"}
+                            className={`rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors ${(!githubToken || useStore.getState().isSyncing) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={isSyncing || !githubToken || useStore.getState().isSyncing}
+                            title={!githubToken ? "GitHub token required to sync" : useStore.getState().isSyncing ? "Global sync in progress" : "Sync Repository"}
                         >
                             <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); toggleFavorite(repo.id) }}
+                            className={`rounded p-1 transition-colors ${repo.is_favorite
+                                ? 'text-rose-500 hover:text-rose-600'
+                                : 'text-[var(--color-text-muted)] hover:text-rose-500'}`}
+                            title={repo.is_favorite ? "Remove from Favorites" : "Add to Favorites"}
+                        >
+                            <Heart className={`h-3.5 w-3.5 ${repo.is_favorite ? 'fill-current' : ''}`} />
                         </button>
                         <a
                             href={repo.url}
@@ -68,8 +77,9 @@ export function RepoCard({ repo, isActive, onClick }: RepoCardProps) {
                         </a>
                         <button
                             onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
-                            className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors"
-                            title="Delete Repository"
+                            disabled={useStore.getState().isSyncing}
+                            className={`rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors ${useStore.getState().isSyncing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            title={useStore.getState().isSyncing ? "Cannot delete during global sync" : "Delete Repository"}
                         >
                             <Trash2 className="h-3.5 w-3.5" />
                         </button>

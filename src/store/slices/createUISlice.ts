@@ -18,6 +18,7 @@ export const createUISlice: StateCreator<GitShelfStore, [], [], UISlice> = (set)
     filterUpdated: null,
     filterTag: null,
     filterType: null,
+    filterFavorite: false,
 
     setStatusFilter: (statusFilter) => set({ statusFilter }),
     setFilterLanguage: (filterLanguage) => set({ filterLanguage }),
@@ -25,6 +26,7 @@ export const createUISlice: StateCreator<GitShelfStore, [], [], UISlice> = (set)
     setFilterUpdated: (filterUpdated) => set({ filterUpdated }),
     setFilterTag: (filterTag) => set({ filterTag }),
     setFilterType: (filterType) => set({ filterType }),
+    setFilterFavorite: (filterFavorite) => set({ filterFavorite }),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
     setSelectedTagId: (selectedTagId) => set({ selectedTagId }),
     setActiveRepoId: (activeRepoId) => set({ activeRepoId }),

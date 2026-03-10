@@ -6,6 +6,7 @@
  */
 
 import { parseGitHubUrl } from './github'
+import type { Repository } from '@/types'
 
 /**
  * Extract GitHub repo paths from a Netscape Bookmark HTML string.
@@ -86,7 +87,7 @@ export async function batchFetchRepos(
     let skipped = 0
     let notFound = 0
     let errors = 0
-    let rateLimited = false
+    const rateLimited = false
     let cancelled = false
     let doneCount = 0
     const pendingRest: BookmarkRepo[] = []
@@ -95,7 +96,7 @@ export async function batchFetchRepos(
     const { fetchRepositoriesBatchGraphQL } = await import('@/lib/github')
 
     // Helper to process a single repo result (shared by GraphQL and REST paths)
-    const processRepoResult = (repo: any, bookmarkItem: any) => {
+    const processRepoResult = (repo: Repository, bookmarkItem: BookmarkRepo) => {
         const store = useStore.getState()
         if (bookmarkItem.added_at) {
             repo.added_at = bookmarkItem.added_at
@@ -156,12 +157,13 @@ export async function batchFetchRepos(
                     })
                     // Success! Move to next chunk
                     continue
-                } catch (gqlErr: any) {
-                    if (signal?.aborted || gqlErr.name === 'AbortError') {
+                } catch (gqlErr: unknown) {
+                    const error = gqlErr as Error & { name?: string }
+                    if (signal?.aborted || error.name === 'AbortError') {
                         cancelled = true
                         break
                     }
-                    console.warn(`GraphQL batch failed for chunk starting at ${i}, queueing for REST:`, gqlErr)
+                    console.warn(`GraphQL batch failed for chunk starting at ${i}, queueing for REST:`, error)
                     // If network fails entirely, queue the whole chunk
                     neededInChunk.forEach(item => {
                         pendingRest.push(item)
@@ -217,7 +219,7 @@ export async function processRestFallback(
     let doneCount = 0
 
     // Helper to process a single repo result
-    const processRepoResult = (repo: any, bookmarkItem: any) => {
+    const processRepoResult = (repo: Repository, bookmarkItem: BookmarkRepo) => {
         const store = useStore.getState()
         if (bookmarkItem.added_at) {
             repo.added_at = bookmarkItem.added_at
@@ -249,8 +251,9 @@ export async function processRestFallback(
                 const repo = await fetchRepository(item.id, token, { skipRelease: true, skipLanguages: true }, signal)
                 processRepoResult(repo, item)
                 success = true
-            } catch (err: any) {
-                const msg = err instanceof Error ? err.message : String(err)
+            } catch (err: unknown) {
+                const error = err as Error & { status?: number }
+                const msg = error.message || String(err)
 
                 if (msg.includes('rate limit') || msg.includes('403')) {
                     rateLimited = true
@@ -259,9 +262,9 @@ export async function processRestFallback(
                 }
 
                 // Check if it's a 404 / Not Found
-                if (err.status === 404 || msg.includes('404') || msg.toLowerCase().includes('not found')) {
+                if (error.status === 404 || msg.includes('404') || msg.toLowerCase().includes('not found')) {
                     const [owner, name] = item.id.split('/')
-                    const fakeRepo: any = {
+                    const fakeRepo: Repository = {
                         id: item.id,
                         url: `https://github.com/${item.id}`,
                         name: name || item.id,

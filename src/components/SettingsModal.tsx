@@ -10,7 +10,7 @@ import { CustomSelect } from './CustomSelect'
 import { ImportExport } from './ImportExport'
 import { ConfirmDialog } from './ConfirmDialog'
 import { useSignOut } from '@/hooks/useSignOut'
-
+import { formatRelativeTime } from '@/lib/utils'
 export function SettingsModal({ onClose }: { onClose: () => void }) {
     const {
         data, updateSettings, importData,
@@ -101,14 +101,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         }
     }
 
-    const formatSyncTime = (ts: number | null) => {
-        if (!ts) return 'Never'
-        const diff = Date.now() - ts
-        if (diff < 60_000) return 'Just now'
-        if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
-        if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
-        return new Date(ts).toLocaleDateString()
-    }
+
 
     return (
         <>
@@ -160,7 +153,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                                         {gistSyncStatus === 'success' && (
                                             <span className="flex items-center gap-1.5 text-xs text-[var(--color-success)]">
                                                 <Cloud className="h-3.5 w-3.5" />
-                                                Saved to Gist <span className="text-[var(--color-success)]/80">· {formatSyncTime(lastGistSyncTime)}</span>
+                                                Saved to Gist <span className="text-[var(--color-success)]/80">· {formatRelativeTime(lastGistSyncTime)}</span>
                                             </span>
                                         )}
                                         {gistSyncStatus === 'error' && (
@@ -172,7 +165,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                                         {gistSyncStatus === 'idle' && (
                                             <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
                                                 <Cloud className="h-3.5 w-3.5" />
-                                                {lastGistSyncTime ? `Last sync: ${formatSyncTime(lastGistSyncTime)}` : 'Not synced yet'}
+                                                {lastGistSyncTime ? `Last sync: ${formatRelativeTime(lastGistSyncTime)}` : 'Not synced yet'}
                                             </span>
                                         )}
                                     </div>
@@ -217,13 +210,15 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                                             searchable={false}
                                             clearable={false}
                                             className="w-[124px]"
+                                            disabled={useStore.getState().isSyncing}
                                         />
 
                                         {/* Action Buttons */}
                                         <button
                                             type="button"
                                             onClick={handleManualBackup}
-                                            disabled={isBackingUp || gistSyncStatus === 'syncing' || !githubToken}
+                                            disabled={isBackingUp || gistSyncStatus === 'syncing' || !githubToken || useStore.getState().isSyncing}
+                                            title={!githubToken ? "GitHub token required" : useStore.getState().isSyncing ? "Backup unavailable during global sync" : "Backup to Gist"}
                                             className="shrink-0 flex items-center justify-center gap-1.5 rounded-lg bg-[var(--color-accent)] px-3.5 py-1.5 text-xs font-semibold text-white transition-all hover:bg-[var(--color-accent-hover)] hover:shadow-lg hover:shadow-[var(--color-accent)]/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-[80px]"
                                         >
                                             Backup
@@ -231,7 +226,8 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                                         <button
                                             type="button"
                                             onClick={handleCheckGist}
-                                            disabled={isCheckingGistManual || !githubToken}
+                                            disabled={isCheckingGistManual || !githubToken || useStore.getState().isSyncing}
+                                            title={useStore.getState().isSyncing ? "Checking unavailable during global sync" : "Check for Gist backup"}
                                             className="shrink-0 flex items-center justify-center gap-1.5 rounded-lg bg-[var(--color-accent)] px-3.5 py-1.5 text-xs font-semibold text-white transition-all hover:bg-[var(--color-accent-hover)] hover:shadow-lg hover:shadow-[var(--color-accent)]/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-[80px]"
                                         >
                                             Check
@@ -239,7 +235,8 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                                         <button
                                             type="button"
                                             onClick={() => setShowRestoreConfirm(true)}
-                                            disabled={!githubToken || !lastCheckedGist || lastCheckedGist === 'none' || isRestoring}
+                                            disabled={!githubToken || !lastCheckedGist || lastCheckedGist === 'none' || isRestoring || useStore.getState().isSyncing}
+                                            title={useStore.getState().isSyncing ? "Restore unavailable during global sync" : "Restore from Gist"}
                                             className="shrink-0 flex items-center justify-center gap-1.5 rounded-lg bg-[var(--color-warning)] text-[var(--color-bg)] px-3.5 py-1.5 text-xs font-semibold transition-all hover:bg-[var(--color-warning)]/90 hover:shadow-lg hover:shadow-[var(--color-warning)]/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {isRestoring && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -304,7 +301,9 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                                         <button
                                             type="button"
                                             onClick={handleLogout}
-                                            className="flex items-center justify-center rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                            disabled={useStore.getState().isSyncing}
+                                            title={useStore.getState().isSyncing ? "Cannot sign out during global sync" : "Sign Out"}
+                                            className="flex items-center justify-center rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             Sign Out
                                         </button>

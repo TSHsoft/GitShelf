@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Download, Upload, Globe, Loader2, Check, Square, AlertCircle } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { GitShelfDataSchema, MAX_ITEMS_LIMIT } from '@/types'
+import { GitShelfDataSchema, MAX_ITEMS_LIMIT, type Repository } from '@/types'
 import { parseBookmarkHtml, batchFetchRepos, type BookmarkRepo } from '@/lib/bookmarks'
 import { decryptTokenAsync } from '@/lib/crypto'
 import { saveLocalData } from '@/lib/db'
@@ -263,7 +263,7 @@ export function ImportExport() {
         const store = useStore.getState()
         pendingRestRepos.forEach(item => {
             const [owner, name] = item.id.split('/')
-            const fakeRepo: any = {
+            const fakeRepo: Repository = {
                 id: item.id,
                 url: `https://github.com/${item.id}`,
                 name: name || item.id,
@@ -325,24 +325,26 @@ export function ImportExport() {
             <div className="flex items-center gap-1">
                 <button
                     onClick={handleExport}
-                    title="Export backup"
-                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-subtle)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
+                    disabled={useStore.getState().isSyncing}
+                    title={useStore.getState().isSyncing ? "Export unavailable during global sync" : "Export backup"}
+                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-subtle)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Download className="h-3.5 w-3.5" />
                     Export
                 </button>
                 <button
                     onClick={() => fileInputRef.current?.click()}
-                    title="Import GitShelf backup"
-                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-subtle)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
+                    disabled={useStore.getState().isSyncing}
+                    title={useStore.getState().isSyncing ? "Import unavailable during global sync" : "Import GitShelf backup"}
+                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-subtle)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Upload className="h-3.5 w-3.5" />
                     Import
                 </button>
                 <button
                     onClick={() => bookmarkInputRef.current?.click()}
-                    disabled={!githubToken}
-                    title={!githubToken ? "GitHub token required to import bookmarks" : "Import from browser bookmarks"}
+                    disabled={!githubToken || useStore.getState().isSyncing}
+                    title={!githubToken ? "GitHub token required to import bookmarks" : useStore.getState().isSyncing ? "Bookmark import unavailable during global sync" : "Import from browser bookmarks"}
                     className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-subtle)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Globe className="h-3.5 w-3.5" />

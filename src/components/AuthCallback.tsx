@@ -27,6 +27,7 @@ export function AuthCallback() {
             processed.current = true
             handleOAuthCallback(code)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const handleOAuthCallback = async (code: string) => {

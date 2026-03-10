@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Settings, Tag, Sun, Moon, LogOut } from 'lucide-react'
 import { createPortal } from 'react-dom'
 
@@ -11,6 +11,7 @@ interface AvatarMenuProps {
     onToggleTheme: () => void
     onSignOut: () => void
     onClose: () => void
+    isSyncing?: boolean
 }
 
 export function AvatarMenu({
@@ -22,11 +23,18 @@ export function AvatarMenu({
     onToggleTheme,
     onSignOut,
     onClose,
+    isSyncing = false
 }: AvatarMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null)
 
+    const [anchor, setAnchor] = useState<DOMRect | null>(null)
+    useEffect(() => {
+        if (anchorRef.current) {
+            setAnchor(anchorRef.current.getBoundingClientRect())
+        }
+    }, [anchorRef])
+
     // Position the menu above the anchor
-    const anchor = anchorRef.current?.getBoundingClientRect()
     const menuStyle: React.CSSProperties = anchor
         ? {
             position: 'fixed',
@@ -84,14 +92,22 @@ export function AvatarMenu({
             {/* Menu Items */}
             <div className="p-1">
                 <MenuItem icon={<Settings className="h-3.5 w-3.5" />} label="Settings" onClick={() => { onSettings(); onClose() }} />
-                <MenuItem icon={<Tag className="h-3.5 w-3.5" />} label="Manage Tags" onClick={() => { onManageTags(); onClose() }} />
+                <MenuItem
+                    icon={<Tag className="h-3.5 w-3.5" />}
+                    label="Manage Tags"
+                    onClick={() => { if (!isSyncing) { onManageTags(); onClose(); } }}
+                    disabled={isSyncing}
+                    title={isSyncing ? "Tagging unavailable during global sync" : ""}
+                />
             </div>
 
             <div className="border-t border-[var(--color-border)] p-1">
                 <MenuItem
                     icon={theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
                     label={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                    onClick={() => { onToggleTheme(); onClose() }}
+                    onClick={() => { if (!isSyncing) { onToggleTheme(); onClose(); } }}
+                    disabled={isSyncing}
+                    title={isSyncing ? "Theme settings unavailable during global sync" : ""}
                 />
             </div>
 
@@ -99,8 +115,10 @@ export function AvatarMenu({
                 <MenuItem
                     icon={<LogOut className="h-3.5 w-3.5" />}
                     label="Sign Out"
-                    onClick={() => { onSignOut(); onClose() }}
-                    danger
+                    onClick={() => { if (!isSyncing) { onSignOut(); onClose(); } }}
+                    danger={!isSyncing}
+                    disabled={isSyncing}
+                    title={isSyncing ? "Cannot sign out during global sync" : ""}
                 />
             </div>
         </div>,
@@ -113,23 +131,31 @@ function MenuItem({
     label,
     onClick,
     danger = false,
+    disabled = false,
+    title = ""
 }: {
     icon: React.ReactNode
     label: string
     onClick: () => void
     danger?: boolean
+    disabled?: boolean
+    title?: string
 }) {
     return (
         <button
-            onClick={onClick}
-            className={`flex w-full items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer
-                ${danger
-                    ? 'text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10'
-                    : 'text-[var(--color-text)] hover:bg-[var(--color-surface-2)]'
+            onClick={() => !disabled && onClick()}
+            disabled={disabled}
+            title={title}
+            className={`flex w-full items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                ${disabled
+                    ? 'opacity-50 cursor-not-allowed text-[var(--color-text-muted)]'
+                    : danger
+                        ? 'text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10'
+                        : 'text-[var(--color-text)] hover:bg-[var(--color-surface-2)]'
                 }
             `}
         >
-            <span className={danger ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]'}>{icon}</span>
+            <span className={disabled ? 'text-[var(--color-text-muted)]' : (danger ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]')}>{icon}</span>
             {label}
         </button>
     )

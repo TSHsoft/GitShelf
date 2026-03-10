@@ -18,6 +18,7 @@ interface CustomSelectProps {
     icon?: React.ReactNode
     className?: string
     clearable?: boolean
+    disabled?: boolean
 }
 
 export function CustomSelect({
@@ -28,7 +29,8 @@ export function CustomSelect({
     searchable = false,
     clearable = true,
     icon,
-    className = ''
+    className = '',
+    disabled = false
 }: CustomSelectProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [search, setSearch] = useState('')
@@ -88,6 +90,7 @@ export function CustomSelect({
         : options
 
     const handleToggle = () => {
+        if (disabled) return
         if (!isOpen) updatePosition()
         setIsOpen(!isOpen)
     }
@@ -98,11 +101,13 @@ export function CustomSelect({
             <button
                 ref={triggerRef}
                 onClick={handleToggle}
+                disabled={disabled}
                 className={`
                     flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all w-full min-w-[100px] justify-between
-                    ${isOpen
-                        ? 'border-[var(--color-accent)] ring-1 ring-[var(--color-accent)]/20 bg-[var(--color-surface)]'
-                        : 'border-[var(--color-border)] bg-[var(--color-surface-2)] hover:bg-[var(--color-surface)] hover:border-[var(--color-border-hover)]'
+                    ${disabled ? 'opacity-50 cursor-not-allowed bg-[var(--color-surface-2)] border-[var(--color-border)]' :
+                        isOpen
+                            ? 'border-[var(--color-accent)] ring-1 ring-[var(--color-accent)]/20 bg-[var(--color-surface)]'
+                            : 'border-[var(--color-border)] bg-[var(--color-surface-2)] hover:bg-[var(--color-surface)] hover:border-[var(--color-border-hover)]'
                     }
                 `}
             >

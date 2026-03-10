@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
-import { ChevronRight, Tag as TagIcon, Code2, AlertTriangle, Layers, Activity, Archive, Trash2, Clock, RefreshCw } from 'lucide-react'
+import { ChevronRight, Tag as TagIcon, Code2, AlertTriangle, Layers, Activity, Archive, Trash2, Clock, RefreshCw, Calendar } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Repository, ViewMode, GroupBy } from '@/types'
 import { useStore } from '@/store/useStore'
 import { getLanguageColor } from '@/lib/github'
 import { SortableCard } from './CardView'
-import { TableRow, COLUMNS } from './TableView'
+import { TableRow } from './TableView'
+import { COLUMNS } from './columns'
 
 interface Group {
     key: string
@@ -73,6 +74,29 @@ function buildGroups(repos: Repository[], groupBy: GroupBy, tags: Record<string,
         return order.filter((s) => statusGroups[s]).map((s) => sortByName(statusGroups[s]))
     }
 
+    if (groupBy === 'added_at') {
+        const monthGroups: Record<string, Group> = {}
+        for (const repo of repos) {
+            const date = new Date(repo.added_at)
+            const year = date.getFullYear()
+            const month = date.getMonth()
+            const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(date)
+            // Use YYYY-MM as a sortable key
+            const sortKey = `${year}-${String(month).padStart(2, '0')}`
+            if (!monthGroups[sortKey]) {
+                monthGroups[sortKey] = {
+                    key: sortKey,
+                    label: `${monthName} ${year}`,
+                    repos: []
+                }
+            }
+            monthGroups[sortKey].repos.push(repo)
+        }
+        return Object.values(monthGroups)
+            .sort((a, b) => b.key.localeCompare(a.key))
+            .map(sortByName)
+    }
+
     return [{ key: 'all', label: 'All', repos: [...repos].sort((a, b) => a.name.localeCompare(b.name)) }]
 }
 
@@ -87,6 +111,8 @@ function GroupHeader({ group, groupBy, collapsed, onToggle }: {
         Icon = TagIcon
     } else if (groupBy === 'language') {
         Icon = Code2
+    } else if (groupBy === 'added_at') {
+        Icon = Calendar
     } else if (groupBy === 'status') {
         switch (group.key) {
             case 'active': Icon = Activity; break;
@@ -143,13 +169,13 @@ export function GroupedView({ repos, viewMode, groupBy }: GroupedViewProps) {
         <div className="flex flex-col h-full overflow-hidden">
             {/* Sticky Header for Table/List View */}
             {(viewMode === 'table' || viewMode === 'list') && (
-                <div className="flex items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider shrink-0">
+                <div className="flex items-center border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs font-semibold text-[var(--color-text-muted)] shrink-0 z-10 w-full">
                     {COLUMNS.map((col, i) => (
                         <div key={i} className={`flex items-center gap-1 ${col.width}`}>
                             {col.label}
                         </div>
                     ))}
-                    <div className="w-20" /> {/* Actions spacer */}
+                    <div className="w-24" /> {/* Actions spacer */}
                 </div>
             )}
 

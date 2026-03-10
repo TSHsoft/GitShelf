@@ -84,7 +84,7 @@ export const ReadmeViewer = memo(function ReadmeViewer({
                         ]}
                         remarkPlugins={[remarkGfm]}
                         components={{
-                            img: ({ node, ...props }) => {
+                            img: ({ node: _node, ...props }) => {
                                 let src = props.src;
                                 if (src && baseUrls && !src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('#')) {
                                     src = `${baseUrls.rawBase}${src.replace(/^\.\//, '')}`;
@@ -99,7 +99,7 @@ export const ReadmeViewer = memo(function ReadmeViewer({
                                     />
                                 );
                             },
-                            a: ({ node, ...props }) => {
+                            a: ({ node: _node, ...props }) => {
                                 let href = props.href;
                                 if (href && baseUrls && !href.startsWith('http') && !href.startsWith('mailto:') && !href.startsWith('data:') && !href.startsWith('#')) {
                                     href = `${baseUrls.blobBase}${href.replace(/^\.\//, '')}`;

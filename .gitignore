@@ -9,9 +9,11 @@ lerna-debug.log*
 eslint.json
 eslint_report.json
 lint.txt
+lint_out.txt
+lint_raw.json
+lint_results.txt
 lint_results.json
 errors.txt
-
 node_modules
 dist
 dist-ssr

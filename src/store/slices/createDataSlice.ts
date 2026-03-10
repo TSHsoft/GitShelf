@@ -50,6 +50,22 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
                 },
             },
         })),
+    toggleFavorite: (id) =>
+        set((state) => {
+            const repo = state.data.repositories[id]
+            if (!repo) return state
+            const currentFav = repo.is_favorite ?? false
+            return {
+                data: {
+                    ...state.data,
+                    last_modified: Date.now(),
+                    repositories: {
+                        ...state.data.repositories,
+                        [id]: { ...repo, is_favorite: !currentFav }
+                    }
+                }
+            }
+        }),
     markAsViewed: (id) =>
         set((state) => {
             const repo = state.data.repositories[id]

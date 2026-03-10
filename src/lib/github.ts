@@ -1,6 +1,37 @@
 import { Octokit } from 'octokit'
 import type { Repository } from '@/types'
 
+interface GraphQLRepoData {
+    __typename?: string;
+    login?: string;
+    id: string;
+    url: string;
+    name: string;
+    bio?: string;
+    description?: string;
+    followers?: { totalCount: number };
+    updatedAt: string;
+    nameWithOwner: string;
+    owner: { login: string };
+    stargazerCount: number;
+    primaryLanguage?: { name: string };
+    repositoryTopics?: { nodes: { topic: { name: string } }[] };
+    pushedAt: string;
+    latestRelease?: { tagName: string };
+    isArchived: boolean;
+    isDisabled: boolean;
+    isLocked: boolean;
+    isPrivate: boolean;
+    isEmpty: boolean;
+    defaultBranchRef?: { name: string };
+    languages?: {
+        edges: {
+            size: number;
+            node: { name: string };
+        }[];
+    };
+}
+
 // Valid GitHub pages that are NOT repositories
 const NON_REPO_PAGES = new Set([
     'topics', 'explore', 'settings', 'marketplace', 'sponsors', 'orgs',
@@ -153,7 +184,7 @@ export async function fetchRepository(repoPath: string, token?: string, opts?: {
             has_new_release: false, // Initial fetch
             archived: data.archived ?? false,
             is_disabled: data.disabled ?? false,
-            is_locked: (data as any).locked ?? false,
+            is_locked: ('locked' in data ? Boolean((data as { locked?: boolean }).locked) : false),
             is_private: data.private ?? false,
             is_empty: data.size === 0,
             status: (data.archived) ? 'archived' : 'active', // Basic initial status
@@ -163,9 +194,9 @@ export async function fetchRepository(repoPath: string, token?: string, opts?: {
             last_synced_at: Date.now(),
             type: 'repository'
         }
-    } catch (err: any) {
+    } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err)
-        if (err.status === 401 || msg.includes('401') || msg.includes('Bad credentials')) {
+        if (msg.includes('401') || msg.includes('Bad credentials')) {
             throw new Error('GitHub API Token expired or invalid')
         }
         throw err
@@ -215,7 +246,7 @@ export async function syncRepository(
                 prev_stars: existing.stars,
                 updated_at: data.updated_at ?? existing.updated_at,
                 last_synced_at: Date.now(),
-                status: 'active' as any,
+                status: 'active',
             }
         }
 
@@ -272,20 +303,20 @@ export async function syncRepository(
             has_new_release,
             archived: data.archived ?? false,
             is_disabled: data.disabled ?? false,
-            is_locked: (data as any).locked ?? false,
+            is_locked: ('locked' in data ? Boolean((data as { locked?: boolean }).locked) : false),
             is_private: data.private ?? false,
             is_empty: data.size === 0,
-            status: status as any, // Cast to match schema
+            status: status,
         }
-    } catch (err: any) {
+    } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err)
-        if (err.status === 401 || msg.includes('401') || msg.includes('Bad credentials')) {
+        if (msg.includes('401') || msg.includes('Bad credentials')) {
             throw new Error('GitHub API Token expired or invalid')
         }
 
-        const isNotFound = err.status === 404 || msg.includes('404') || msg.includes('Not Found')
+        const isNotFound = msg.includes('404') || msg.includes('Not Found')
         if (isNotFound) {
-            return { ...existing, status: 'not_found' as any }
+            return { ...existing, status: 'not_found' }
         }
         throw err
     }
@@ -378,7 +409,7 @@ function buildSyncGraphQLQuery(repos: Repository[]): string {
 
 
 function parseGraphQLSyncResponse(
-    response: any,
+    response: Record<string, GraphQLRepoData>,
     repos: Repository[],
     updated: Record<string, Repository>,
     result: SyncResult
@@ -399,19 +430,20 @@ function parseGraphQLSyncResponse(
             const bio = isOrg ? data.description : data.bio
             const followers = isOrg ? 0 : (data.followers?.totalCount || 0)
 
+            const profileLogin = data.login ?? existing.id
             const newRepoData: Repository = {
                 ...existing,
-                id: data.login,
+                id: profileLogin,
                 node_id: data.id,
                 url: data.url,
-                name: data.name || data.login,
-                owner: data.login,
+                name: data.name ?? profileLogin,
+                owner: profileLogin,
                 description: bio || null,
                 stars: followers,
                 prev_stars: existing.stars,
                 updated_at: data.updatedAt || new Date().toISOString(),
                 last_synced_at: Date.now(),
-                status: 'active' as any,
+                status: 'active',
             }
 
             result.updated++
@@ -421,12 +453,11 @@ function parseGraphQLSyncResponse(
 
 
         const languages: Record<string, number> = {}
-        data.languages?.edges?.forEach((edge: any) => {
+        data.languages?.edges?.forEach((edge: { size: number; node: { name: string } }) => {
             languages[edge.node.name] = edge.size
         })
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const topics = data.repositoryTopics?.nodes?.map((t: any) => t.topic.name).sort() || []
+        const topics = data.repositoryTopics?.nodes?.map((t: { topic: { name: string } }) => t.topic.name).sort() || []
 
         const status = calculateRepoStatus(
             existing.id,
@@ -446,7 +477,7 @@ function parseGraphQLSyncResponse(
             url: data.url,
             name: data.name,
             owner: data.owner.login,
-            description: data.description,
+            description: data.description ?? null,
             stars: data.stargazerCount,
             prev_stars: existing.stars,
             language: data.primaryLanguage?.name ?? null,
@@ -462,8 +493,7 @@ function parseGraphQLSyncResponse(
             is_private: data.isPrivate,
             is_empty: data.isEmpty,
             default_branch: data.defaultBranchRef?.name ?? existing.default_branch,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            status: status as any,
+            status: status,
             last_synced_at: Date.now(),
         }
 
@@ -500,22 +530,27 @@ export async function syncBatch(
     try {
         if (!token) throw new Error('No token provided, skipping GraphQL')
         if (signal?.aborted) return { repos: updated, result }
-        let response: any;
+        let response: Record<string, GraphQLRepoData> | null = null;
         try {
-            response = await octokit.graphql(query, { request: { signal } })
-        } catch (err: any) {
-            if (err.data) {
-                response = err.data;
+            response = await octokit.graphql(query, { request: { signal } }) as Record<string, GraphQLRepoData>
+        } catch (err: unknown) {
+            const error = err as { data?: unknown }
+            if (error.data) {
+                response = error.data as Record<string, GraphQLRepoData>;
             } else {
                 throw err;
             }
         }
-        fallbackRepos = parseGraphQLSyncResponse(response, repos, updated, result)
+        if (response) {
+            fallbackRepos = parseGraphQLSyncResponse(response, repos, updated, result)
+        }
 
-    } catch (error: any) {
+    } catch (err: unknown) {
+        const error = err as Error & { status?: number }
         console.warn('Batch sync (GraphQL) failed entirely, falling back to REST:', error)
 
-        if (error.status === 401 || (error.message && (error.message.includes('401') || error.message.includes('Bad credentials')))) {
+        const msg = error.message || String(err)
+        if (error.status === 401 || msg.includes('401') || msg.includes('Bad credentials')) {
             throw new Error('GitHub API Token expired or invalid')
         }
 
@@ -530,7 +565,7 @@ export async function syncBatch(
         try {
             const synced = await syncRepository(repo, token, signal)
 
-            if (synced.status === 'deleted' || (synced.status as any) === 'not_found') {
+            if (synced.status === 'deleted' || synced.status === 'not_found') {
                 result.deleted++
             } else if (synced.status === 'renamed') {
                 result.renamed++
@@ -544,9 +579,10 @@ export async function syncBatch(
         } catch (err) {
             console.error(`REST sync failed for ${repo.id}:`, err)
             // If REST also fails (e.g. true 404), mark as not_found safely
-            if ((err as any)?.status === 404) {
+            const error = err as { status?: number }
+            if (error.status === 404) {
                 result.deleted++
-                updated[repo.id] = { ...repo, status: 'not_found' as any }
+                updated[repo.id] = { ...repo, status: 'not_found' }
             }
         }
     }
@@ -622,7 +658,7 @@ export async function syncAll(
                     const newRepoData = batchUpdatedRepos[oldId]
 
                     if (newRepoData) {
-                        if (newRepoData.status === 'deleted' || (newRepoData.status as any) === 'not_found') {
+                        if (newRepoData.status === 'deleted' || newRepoData.status === 'not_found') {
                             updated[oldId] = newRepoData
                         } else if (newRepoData.id !== oldId) {
                             // Key swap for renamed or case-changed repos
@@ -672,7 +708,7 @@ export async function syncAll(
             // REST can follow rename redirects properly
             const synced = await syncRepository(repo, token)
 
-            if (synced.status === 'deleted' || (synced.status as any) === 'not_found') {
+            if (synced.status === 'deleted' || synced.status === 'not_found') {
                 result.deleted++
                 updated[repo.id] = synced
             } else if (synced.id !== repo.id) {
@@ -683,11 +719,12 @@ export async function syncAll(
                 result.updated++
                 updated[repo.id] = synced
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const error = err as { status?: number }
             console.error(`REST sync failed for ${repo.id}:`, err)
-            if (err?.status === 404) {
+            if (error.status === 404) {
                 result.deleted++
-                updated[repo.id] = { ...repo, status: 'not_found' as any }
+                updated[repo.id] = { ...repo, status: 'not_found' }
             }
         }
 
@@ -708,14 +745,14 @@ export async function fetchReadme(owner: string, repo: string, token?: string): 
     const octokit = new Octokit({ auth: token })
     try {
 
-        const { data } = await octokit.rest.repos.getReadme({
+        const response = await octokit.rest.repos.getReadme({
             owner,
             repo,
             mediaType: {
                 format: 'raw',
             },
-        }) as any
-        return String(data)
+        }) as unknown as { data: string }
+        return response.data
     } catch {
         return ''
     }
@@ -883,8 +920,7 @@ query($username: String!) {
                 emojiHTML: owner.status.emojiHTML,
                 message: owner.status.message
             },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            socialAccounts: isOrg ? [] : (owner.socialAccounts?.nodes || []).map((s: any) => ({ provider: s.provider, url: s.url })),
+            socialAccounts: isOrg ? [] : (owner.socialAccounts?.nodes || []).map((s: { provider: string; url: string }) => ({ provider: s.provider, url: s.url })),
             followersCount: owner.followers?.totalCount || 0,
             followingCount: owner.following?.totalCount || 0,
             createdAt: owner.createdAt,
@@ -1034,7 +1070,7 @@ export async function upsertGistBackup(token: string, content: string, existingG
 
             const { data } = await octokit.rest.gists.update({
                 gist_id: existingGistId,
-                files: files as any,
+                files: files as Record<string, { content: string }>,
                 description: 'GitShelf Database Backup'
             })
             return data.id!
@@ -1118,6 +1154,31 @@ function buildFetchGraphQLQuery(repoPaths: string[]): string {
  * Batch-fetch repositories using GraphQL.
  * Returns a map of path -> Repository.
  */
+
+interface GraphQLRepoData {
+    __typename?: string;
+    login?: string;
+    id: string;
+    url: string;
+    name: string;
+    bio?: string;
+    description?: string;
+    followers?: { totalCount: number };
+    updatedAt: string;
+    nameWithOwner: string;
+    owner: { login: string };
+    stargazerCount: number;
+    primaryLanguage?: { name: string };
+    repositoryTopics?: { nodes: { topic: { name: string } }[] };
+    pushedAt: string;
+    latestRelease?: { tagName: string };
+    isArchived: boolean;
+    isDisabled: boolean;
+    isLocked: boolean;
+    isPrivate: boolean;
+    isEmpty: boolean;
+    defaultBranchRef?: { name: string };
+}
 export async function fetchRepositoriesBatchGraphQL(
     repoPaths: string[],
     token: string,
@@ -1127,21 +1188,24 @@ export async function fetchRepositoriesBatchGraphQL(
     const query = buildFetchGraphQLQuery(repoPaths)
 
     try {
-        let response: any;
+        let response: unknown;
         try {
             response = await octokit.graphql(query, { request: { signal } });
-        } catch (err: any) {
-            if (err.data) {
-                response = err.data;
+        } catch (err: unknown) {
+            const graphqlErr = err as { data?: unknown };
+            if (graphqlErr.data) {
+                response = graphqlErr.data;
             } else {
                 throw err;
             }
         }
 
         const results: Record<string, Repository> = {}
+        const typedResponse = response as Record<string, unknown> | null;
+
 
         repoPaths.forEach((path, index) => {
-            const data = response[`repo${index}`]
+            const data = typedResponse?.[`repo${index}`] as GraphQLRepoData | undefined;
             if (!data) {
                 // Return a NOT_FOUND placeholder — detect profile vs repo by path segment count
                 const [owner, name] = path.split('/')
@@ -1175,19 +1239,20 @@ export async function fetchRepositoriesBatchGraphQL(
 
             // Handle Profile response
             if (data.__typename === 'User' || data.__typename === 'Organization' || data.login) {
+                const profileLogin = data.login ?? path
                 results[path] = {
-                    id: data.login,
+                    id: profileLogin,
                     node_id: data.id,
                     url: data.url,
-                    name: data.name || data.login,
-                    owner: data.login,
-                    description: data.bio || data.description || null,
+                    name: data.name ?? profileLogin,
+                    owner: profileLogin,
+                    description: data.bio ?? data.description ?? null,
                     stars: data.followers?.totalCount || 0,
                     prev_stars: undefined,
                     language: null,
                     languages: undefined,
                     topics: [],
-                    updated_at: data.updatedAt || new Date().toISOString(),
+                    updated_at: data.updatedAt ?? new Date().toISOString(),
                     last_push_at: new Date().toISOString(),
                     latest_release: null,
                     has_new_release: false,
@@ -1213,12 +1278,12 @@ export async function fetchRepositoriesBatchGraphQL(
                 url: data.url,
                 name: data.name,
                 owner: data.owner.login,
-                description: data.description,
+                description: data.description ?? null,
                 stars: data.stargazerCount,
                 prev_stars: undefined,
                 language: data.primaryLanguage?.name ?? null,
                 languages: undefined,
-                topics: data.repositoryTopics?.nodes?.map((n: any) => n.topic.name).sort() || [],
+                topics: data.repositoryTopics?.nodes?.map((n: { topic: { name: string } }) => n.topic.name).sort() || [],
                 updated_at: data.updatedAt,
                 last_push_at: data.pushedAt,
                 latest_release: data.latestRelease?.tagName ?? null,

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Search, Plus, Trash2, X } from 'lucide-react'
+import { Search, Plus, Trash2, X, Heart } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { AddRepoModal } from './AddRepoModal'
 import { ViewSwitcher } from './ViewSwitcher'
@@ -11,7 +11,7 @@ import type { Repository } from '@/types'
 
 /** Compute the sorted flat list of repos (shared across all views) */
 function useSortedRepos(): Repository[] {
-    const { data, searchQuery, selectedTagId, sortField, sortDir, viewMode, filterLanguage, filterStars, filterUpdated, filterTag, filterType } = useStore()
+    const { data, searchQuery, selectedTagId, sortField, sortDir, viewMode, filterLanguage, filterStars, filterUpdated, filterTag, filterType, filterFavorite } = useStore()
 
     return useMemo(() => {
         let list = Object.values(data.repositories)
@@ -24,6 +24,11 @@ function useSortedRepos(): Repository[] {
         // Filter by type
         if (filterType) {
             list = list.filter((r) => r.type === filterType)
+        }
+
+        // Filter by favorite
+        if (filterFavorite) {
+            list = list.filter((r) => r.is_favorite)
         }
 
         // Filter by search
@@ -55,6 +60,7 @@ function useSortedRepos(): Repository[] {
         }
 
         if (filterUpdated) {
+            // eslint-disable-next-line
             const now = Date.now()
             const oneDay = 24 * 60 * 60 * 1000
             list = list.filter(r => {
@@ -88,21 +94,11 @@ function useSortedRepos(): Repository[] {
 
         // Sort logic
         return [...list].sort((a, b) => {
-            // Card View: Sort by Tag (first alphabetical) -> then Repo Name
-            if (viewMode === 'card') {
-                // Get first tag name for a
-                const aTags = a.tags.map(id => data.tags[id]?.name || '').sort()
-                const aTag = aTags.length > 0 ? aTags[0].toLowerCase() : 'zzz' // Untagged at end
+            // Primary sort: favorites
+            if (a.is_favorite && !b.is_favorite) return -1;
+            if (!a.is_favorite && b.is_favorite) return 1;
 
-                // Get first tag name for b
-                const bTags = b.tags.map(id => data.tags[id]?.name || '').sort()
-                const bTag = bTags.length > 0 ? bTags[0].toLowerCase() : 'zzz'
-
-                if (aTag !== bTag) return aTag.localeCompare(bTag)
-                return a.name.localeCompare(b.name)
-            }
-
-            // Table View (or other): Sort by column
+            // Card/Table View (or other): Sort by column
             let av: string | number = a[sortField] ?? ''
             let bv: string | number = b[sortField] ?? ''
 
@@ -124,7 +120,7 @@ function useSortedRepos(): Repository[] {
             const cmp = av < bv ? -1 : av > bv ? 1 : 0
             return sortDir === 'asc' ? cmp : -cmp
         })
-    }, [data.repositories, searchQuery, selectedTagId, sortField, sortDir, viewMode, data.tags, filterLanguage, filterStars, filterUpdated, filterTag, filterType])
+    }, [data.repositories, searchQuery, selectedTagId, sortField, sortDir, viewMode, data.tags, filterLanguage, filterStars, filterUpdated, filterTag, filterType, filterFavorite])
 }
 
 import { ConfirmDialog } from './ConfirmDialog'
@@ -132,7 +128,7 @@ import { CustomSelect } from './CustomSelect'
 import { BulkTagDialog } from './BulkTagDialog'
 
 export function RepoList() {
-    const { viewMode, groupBy, searchQuery, statusFilter, setStatusFilter, removeRepository, data, filterTag, setFilterTag, filterLanguage, setFilterLanguage, filterStars, setFilterStars, filterUpdated, setFilterUpdated, filterType, setFilterType, githubToken } = useStore()
+    const { viewMode, groupBy, searchQuery, statusFilter, setStatusFilter, removeRepository, data, filterTag, setFilterTag, filterLanguage, setFilterLanguage, filterStars, setFilterStars, filterUpdated, setFilterUpdated, filterType, setFilterType, filterFavorite, setFilterFavorite, githubToken } = useStore()
     const [showAddModal, setShowAddModal] = useState(false)
     const [showBulkTagDialog, setShowBulkTagDialog] = useState(false)
     const [selectedRepoIds, setSelectedRepoIds] = useState<Set<string>>(new Set())
@@ -219,13 +215,17 @@ export function RepoList() {
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setShowBulkTagDialog(true)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[var(--color-surface)] text-[var(--color-text)] text-xs font-medium border border-[var(--color-border)] hover:bg-[var(--color-surface-2)] transition-all"
+                                disabled={useStore.getState().isSyncing}
+                                title={useStore.getState().isSyncing ? "Bulk tagging unavailable during global sync" : "Bulk tagging"}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[var(--color-surface)] text-[var(--color-text)] text-xs font-medium border border-[var(--color-border)] hover:bg-[var(--color-surface-2)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <Plus className="h-3.5 w-3.5" /> Tag
                             </button>
                             <button
                                 onClick={handleBulkDelete}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[var(--color-surface)] text-[var(--color-danger)] text-xs font-medium border border-[var(--color-border)] hover:bg-[var(--color-danger)] hover:text-white hover:border-transparent transition-all"
+                                disabled={useStore.getState().isSyncing}
+                                title={useStore.getState().isSyncing ? "Bulk delete unavailable during global sync" : "Bulk delete"}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[var(--color-surface)] text-[var(--color-danger)] text-xs font-medium border border-[var(--color-border)] hover:bg-[var(--color-danger)] hover:text-white hover:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <Trash2 className="h-3.5 w-3.5" /> Delete
                             </button>
@@ -263,8 +263,8 @@ export function RepoList() {
                         <ViewSwitcher />
                         <button
                             onClick={() => setShowAddModal(true)}
-                            disabled={!githubToken}
-                            title={!githubToken ? "GitHub token required to add a repository" : "Add repository"}
+                            disabled={!githubToken || useStore.getState().isSyncing}
+                            title={!githubToken ? "GitHub token required to add a repository" : useStore.getState().isSyncing ? "Cannot add repositories during global sync" : "Add repository"}
                             className="flex h-[30px] items-center gap-1.5 rounded-lg bg-[var(--color-accent)] px-3 text-xs font-semibold text-white transition-all hover:bg-[var(--color-accent-hover)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Plus className="h-3.5 w-3.5" />
@@ -295,11 +295,26 @@ export function RepoList() {
 
                     <div className="h-4 w-px bg-[var(--color-border)]" />
 
+                    {/* Favorite toggle */}
+                    <button
+                        onClick={() => setFilterFavorite(!filterFavorite)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all ${filterFavorite
+                            ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] border border-transparent hover:border-[var(--color-border)]'
+                            }`}
+                        title="Show favorites only"
+                    >
+                        <Heart className={`h-4 w-4 ${filterFavorite ? 'fill-current' : ''}`} />
+                    </button>
+
+                    <div className="h-4 w-px bg-[var(--color-border)]" />
+
                     {/* Status Filter */}
                     <div className="flex items-center gap-1.5 min-w-[140px]">
                         <CustomSelect
                             value={statusFilter === 'all' ? null : statusFilter}
-                            onChange={(val) => setStatusFilter((val as any) || 'all')}
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            onChange={(val) => setStatusFilter((val || 'all') as any)}
                             options={[
                                 { value: 'active', label: 'Active' },
                                 { value: 'stale', label: 'Stale' },
@@ -393,7 +408,7 @@ export function RepoList() {
                     </div>
 
                     {/* Clear Button */}
-                    {(filterLanguage || filterStars || filterUpdated || filterTag || statusFilter !== 'all' || filterType) && (
+                    {(filterLanguage || filterStars || filterUpdated || filterTag || statusFilter !== 'all' || filterType || filterFavorite) && (
                         <button
                             onClick={() => {
                                 setFilterLanguage(null)
@@ -401,6 +416,7 @@ export function RepoList() {
                                 setFilterUpdated(null)
                                 setFilterTag(null)
                                 setFilterType(null)
+                                setFilterFavorite(false)
                                 setStatusFilter('all')
                             }}
                             className="text-xs text-[var(--color-accent)] hover:underline ml-auto font-medium"

@@ -15,11 +15,6 @@ export function TagEditModal({ repoId, initialTags, onClose }: TagEditModalProps
     const [selectedTagIds, setSelectedTagIds] = useState(initialTags)
     const repo = data.repositories[repoId]
 
-    // Sync if repo changes (e.g. external update)
-    useEffect(() => {
-        if (repo) setSelectedTagIds(repo.tags)
-    }, [repo?.tags])
-
     // Close on Escape key
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {

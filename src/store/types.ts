@@ -10,6 +10,7 @@ export interface DataSlice {
     addRepository: (repo: Repository) => void
     removeRepository: (id: string) => void
     updateRepository: (id: string, updates: Partial<Repository>) => void
+    toggleFavorite: (id: string) => void
     markAsViewed: (id: string) => void
     importData: (incoming: GitShelfData) => void
     setRepositories: (repos: Record<string, Repository>) => void
@@ -39,6 +40,7 @@ export interface UISlice {
     filterUpdated: string | null
     filterTag: string | null
     filterType: 'repository' | 'profile' | null
+    filterFavorite: boolean
 
     setStatusFilter: (status: 'all' | RepoStatus) => void
     setFilterLanguage: (lang: string | null) => void
@@ -46,6 +48,7 @@ export interface UISlice {
     setFilterUpdated: (updated: string | null) => void
     setFilterTag: (tag: string | null) => void
     setFilterType: (type: 'repository' | 'profile' | null) => void
+    setFilterFavorite: (favorite: boolean) => void
     setSearchQuery: (q: string) => void
     setSelectedTagId: (id: string | null) => void
     setActiveRepoId: (id: string | null) => void

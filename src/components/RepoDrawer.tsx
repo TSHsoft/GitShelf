@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { X, ExternalLink, Calendar, Star, Tag as TagIcon, BookOpen, Globe, Sun, Moon } from 'lucide-react'
+import { X, ExternalLink, Calendar, Star, Tag as TagIcon, BookOpen, Globe, Sun, Moon, Heart } from 'lucide-react'
 import { fetchReadme, formatStars, fetchProfileDetails, type ProfileDetails } from '@/lib/github'
 import { formatDate } from '@/lib/utils'
 import { useStore } from '@/store/useStore'
@@ -19,6 +19,7 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
     const repo = useStore(React.useCallback(state => state.data.repositories[repoId], [repoId]))
     const drawerTheme = useStore(state => state.drawerTheme)
     const toggleDrawerTheme = useStore(state => state.toggleDrawerTheme)
+    const toggleFavorite = useStore(state => state.toggleFavorite)
     const github_token = useStore(state => state.githubToken)
 
     // Use useShallow for array mapping to prevent re-renders when other tags change
@@ -31,6 +32,7 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
 
     useLockBodyScroll()
 
+    // 1. Fetch README & Profile
     useEffect(() => {
         if (!repo) return
 
@@ -59,7 +61,10 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
         }
 
         loadReadme()
+    }, [repo?.owner, repo?.name, repo?.type, github_token]) // Do NOT include onClose or full repo object here so it doesn't refetch on tag/favorite update
 
+    // 2. Escape Key Listener
+    useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
                 onClose()
@@ -70,20 +75,19 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
         return () => {
             document.removeEventListener('keydown', handleKeyDown)
         }
-    }, [repoId, repo?.owner, repo?.name, github_token, onClose])
-
-    if (!repo) return null
+    }, [onClose])
 
     const baseUrls = React.useMemo(() => {
         if (!repo) return null
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const branch = (repo as any).default_branch || 'main'
+        const branch = repo.default_branch || 'main'
         const targetRepoName = repo.type === 'profile' ? repo.owner : repo.name
         return {
             rawBase: `https://raw.githubusercontent.com/${repo.owner}/${targetRepoName}/${branch}/`,
             blobBase: `https://github.com/${repo.owner}/${targetRepoName}/blob/${branch}/`
         }
     }, [repo])
+
+    if (!repo) return null
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -107,6 +111,14 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
                         </h2>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => toggleFavorite(repo.id)}
+                            title={repo.is_favorite ? "Remove from Favorites" : "Add to Favorites"}
+                            className={`p-2 rounded-lg hover:bg-[var(--color-surface)] transition-colors ${repo.is_favorite ? 'text-rose-500' : 'text-[var(--color-text-muted)] hover:text-rose-500'
+                                }`}
+                        >
+                            <Heart className={`h-5 w-5 ${repo.is_favorite ? 'fill-current' : ''}`} />
+                        </button>
                         <a
                             href={repo.type === 'profile' ? repo.url : `${repo.url}#readme`}
                             target="_blank"

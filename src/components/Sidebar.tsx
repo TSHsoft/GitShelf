@@ -8,14 +8,7 @@ import { useSignOut } from '@/hooks/useSignOut'
 
 const COLLAPSED_KEY = 'gitshelf-sidebar-collapsed'
 
-function formatSyncTime(ts: number | null): string {
-    if (!ts) return 'Never'
-    const diff = Date.now() - ts
-    if (diff < 60_000) return 'Just now'
-    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
-    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
-    return new Date(ts).toLocaleDateString()
-}
+import { formatRelativeTime } from '@/lib/utils'
 
 function Tooltip({ label, children }: { label: string; children: React.ReactNode }) {
     return (
@@ -110,10 +103,11 @@ export function Sidebar() {
                 {/* Nav */}
                 <nav className="flex flex-col gap-0.5 p-2 flex-1">
                     {isCollapsed ? (
-                        <Tooltip label="Manage Tags">
+                        <Tooltip label={useStore.getState().isSyncing ? "Tagging unavailable during sync" : "Manage Tags"}>
                             <button
                                 onClick={() => setShowManageTags(true)}
-                                className="flex w-full items-center justify-center rounded-lg p-2.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] transition-colors cursor-pointer"
+                                disabled={useStore.getState().isSyncing}
+                                className="flex w-full items-center justify-center rounded-lg p-2.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <TagIcon className="h-4 w-4 text-[var(--color-accent)]" />
                             </button>
@@ -121,7 +115,9 @@ export function Sidebar() {
                     ) : (
                         <button
                             onClick={() => setShowManageTags(true)}
-                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text)] bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] transition-colors cursor-pointer"
+                            disabled={useStore.getState().isSyncing}
+                            title={useStore.getState().isSyncing ? "Tagging unavailable during global sync" : "Manage Tags"}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text)] bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <TagIcon className="h-4 w-4 text-[var(--color-accent)]" />
                             Manage Tags
@@ -136,7 +132,7 @@ export function Sidebar() {
                         <div className="flex items-center gap-1.5 px-3 py-1 mb-0.5">
                             <Cloud className={`h-3 w-3 shrink-0 text-[var(--color-success)] ${gistSyncStatus === 'syncing' ? 'animate-pulse' : ''}`} />
                             <span className="text-[11px] font-medium text-[var(--color-success)] truncate">
-                                Backed up {formatSyncTime(lastGistSyncTime)}
+                                Backed up {formatRelativeTime(lastGistSyncTime)}
                             </span>
                         </div>
                     )}
@@ -201,6 +197,7 @@ export function Sidebar() {
                         signOut()
                     }}
                     onClose={() => setShowAvatarMenu(false)}
+                    isSyncing={useStore.getState().isSyncing}
                 />
             )}
 

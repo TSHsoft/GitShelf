@@ -13,6 +13,7 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
     { value: 'tag', label: 'Group by Tag' },
     { value: 'language', label: 'Group by Language' },
     { value: 'status', label: 'Group by Status' },
+    { value: 'added_at', label: 'Group by Added Date' },
 ]
 
 export function ViewSwitcher() {

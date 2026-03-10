@@ -32,6 +32,7 @@ export const RepositorySchema = z.object({
     is_locked: z.boolean().default(false),
     is_private: z.boolean().default(false),
     is_empty: z.boolean().default(false),
+    is_favorite: z.boolean().default(false),
 
     topics: z.array(z.string()).default([]),
 
@@ -72,7 +73,7 @@ export type RepoStatus = 'active' | 'deleted' | 'renamed' | 'stale' | 'archived'
 // ...
 export type SortField = 'name' | 'stars' | 'language' | 'last_push_at' | 'latest_release' | 'added_at' | 'status'
 export type SortDir = 'asc' | 'desc'
-export type GroupBy = 'none' | 'tag' | 'language' | 'status'
+export type GroupBy = 'none' | 'tag' | 'language' | 'status' | 'added_at'
 
 // --- Default Data ---
 

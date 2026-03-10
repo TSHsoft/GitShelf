@@ -43,45 +43,48 @@ export function useAutoSave() {
     return { scheduleSave }
 }
 
-// Gist Sync Hook
+export async function executeGistBackup() {
+    const state = useStore.getState()
+    const encToken = state.githubToken
+    if (!encToken) {
+        state.setGistSyncError('GitHub token is missing')
+        throw new Error('No GitHub token')
+    }
+
+    if (state.isSyncing) {
+        console.log('Skipping Gist backup because a global sync is in progress')
+        return
+    }
+
+    const token = await decryptTokenAsync(encToken)
+    state.setGistSyncStatus('syncing')
+    state.setGistSyncError(null)
+
+    try {
+        const existing = await getGistBackup(token).catch(() => null)
+        const content = JSON.stringify(state.data)
+
+        await upsertGistBackup(token, content, existing?.id)
+
+        state.setGistSyncStatus('success')
+        state.setLastGistSyncTime(Date.now())
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error)
+        console.error('Gist backup failed:', error)
+        state.setGistSyncStatus('error')
+        state.setGistSyncError(msg || 'Failed to backup to Gist')
+        throw error
+    }
+}
+
 export function useGistSync() {
     const {
         data,
-        gistSyncStatus,
-        setGistSyncStatus,
-        setLastGistSyncTime,
-        setGistSyncError,
-        githubToken
+        gistSyncStatus
     } = useStore()
 
-    const manualBackup = async () => {
-        const encToken = githubToken
-        if (!encToken) {
-            setGistSyncError('GitHub token is missing')
-            throw new Error('No GitHub token')
-        }
+    const manualBackup = async () => executeGistBackup()
 
-        const token = await decryptTokenAsync(encToken)
-        setGistSyncStatus('syncing')
-        setGistSyncError(null)
-
-        try {
-            // First check if backup exists to get ID
-            const existing = await getGistBackup(token)
-            const content = JSON.stringify(data)
-
-            await upsertGistBackup(token, content, existing?.id)
-
-            setGistSyncStatus('success')
-            setLastGistSyncTime(Date.now())
-        } catch (error: unknown) {
-            const msg = error instanceof Error ? error.message : String(error)
-            console.error('Gist backup failed:', error)
-            setGistSyncStatus('error')
-            setGistSyncError(msg || 'Failed to backup to Gist')
-            throw error
-        }
-    }
 
     // Auto backup effect based on interval
     useEffect(() => {
@@ -94,7 +97,6 @@ export function useGistSync() {
         }, intervalMs)
 
         return () => clearInterval(intervalId)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.settings.backup_interval_minutes])
 
     return { manualBackup, gistSyncStatus }

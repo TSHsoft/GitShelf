@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Trash2, Tag as TagIcon, Archive, AlertTriangle, RefreshCw, Star } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Trash2, Tag as TagIcon, Archive, AlertTriangle, RefreshCw, Star, Heart } from 'lucide-react'
 import type { Repository, SortField, RepoStatus } from '@/types'
 import { useStore } from '@/store/useStore'
 import { formatStars } from '@/lib/github'
@@ -9,17 +9,6 @@ import { TagEditor } from '@/components/TagEditor'
 import { LanguageBar } from '@/components/LanguageBar'
 import { RepoDrawer } from '@/components/RepoDrawer'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-
-export const COLUMNS: { key: SortField | 'select'; label: string; width: string }[] = [
-    { key: 'select', label: '', width: 'w-10' },
-    { key: 'name', label: 'Repository', width: 'flex-[3]' },
-    { key: 'status', label: 'Status', width: 'w-24' },
-    { key: 'stars', label: 'Stars', width: 'w-24' },
-    { key: 'language', label: 'Language', width: 'w-24' },
-    { key: 'added_at', label: 'Added', width: 'w-24' },
-    { key: 'last_push_at', label: 'Last Push', width: 'w-24' },
-    { key: 'latest_release', label: 'Release', width: 'w-24' },
-]
 
 function StatusBadge({ status }: { status: RepoStatus }) {
     switch (status) {
@@ -72,7 +61,7 @@ export function TableRow({ repo, onClick, selected, onToggle, githubToken }: {
     onToggle: () => void;
     githubToken: string | null;
 }) {
-    const { data, removeRepository, syncRepository, syncingRepoIds, syncErrors, isOnline } = useStore()
+    const { data, removeRepository, syncRepository, toggleFavorite, syncingRepoIds, syncErrors, isOnline } = useStore()
     const tags = repo.tags.map((id) => data.tags[id]).filter(Boolean)
     const isSyncing = syncingRepoIds.includes(repo.id)
     const syncError = syncErrors[repo.id]
@@ -180,9 +169,9 @@ export function TableRow({ repo, onClick, selected, onToggle, githubToken }: {
                                 className={`rounded p-1 transition-colors ${hasError
                                     ? 'text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10'
                                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-                                    } ${(!isOnline || !githubToken) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                disabled={isSyncing || !isOnline || !githubToken}
-                                title={!githubToken ? "GitHub token required to sync" : !isOnline ? "Sync unavailable offline" : (hasError ? syncError : "Sync Repository")}
+                                    } ${(!isOnline || !githubToken || useStore.getState().isSyncing) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                disabled={isSyncing || !isOnline || !githubToken || useStore.getState().isSyncing}
+                                title={!githubToken ? "GitHub token required to sync" : !isOnline ? "Sync unavailable offline" : useStore.getState().isSyncing ? "Global sync in progress" : (hasError ? syncError : "Sync Repository")}
                             >
                                 <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                             </button>
@@ -195,10 +184,25 @@ export function TableRow({ repo, onClick, selected, onToggle, githubToken }: {
                             )}
                         </div>
 
+                        <button
+                            onClick={(e) => { e.stopPropagation(); toggleFavorite(repo.id) }}
+                            className={`rounded p-1 transition-colors ${repo.is_favorite
+                                ? 'text-rose-500 hover:text-rose-600'
+                                : 'text-[var(--color-text-muted)] hover:text-rose-500'}`}
+                            title={repo.is_favorite ? "Remove from Favorites" : "Add to Favorites"}
+                        >
+                            <Heart className={`h-3.5 w-3.5 ${repo.is_favorite ? 'fill-current' : ''}`} />
+                        </button>
+
                         <a href={repo.url} target="_blank" rel="noopener noreferrer" className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]" title="Open in GitHub">
                             <ExternalLink className="h-3.5 w-3.5" />
                         </a>
-                        <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }} className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title="Delete Repository">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
+                            disabled={useStore.getState().isSyncing}
+                            className={`rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors ${useStore.getState().isSyncing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            title={useStore.getState().isSyncing ? "Cannot delete during global sync" : "Delete Repository"}
+                        >
                             <Trash2 className="h-3.5 w-3.5" />
                         </button>
                     </div>
@@ -248,6 +252,7 @@ export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableVi
     const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null)
 
     // Virtualization
+    // eslint-disable-next-line
     const virtualizer = useVirtualizer({
         count: repos.length,
         getScrollElement: () => parentRef.current,
@@ -284,8 +289,7 @@ export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableVi
     return (
         <>
             <div className="flex flex-col flex-1 min-h-0 bg-[var(--color-bg)]">
-                {/* Header */}
-                <div className="flex items-center border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider z-10 w-full">
+                <div className="flex items-center border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs font-semibold text-[var(--color-text-muted)] z-10 w-full">
                     <div className="w-10 flex items-center justify-center">
                         <input
                             type="checkbox"
