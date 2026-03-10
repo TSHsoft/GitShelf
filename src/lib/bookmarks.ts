@@ -278,6 +278,7 @@ export async function processRestFallback(
                         latest_release: null,
                         has_new_release: false,
                         archived: false,
+                        is_favorite: false,
                         is_disabled: false,
                         is_locked: false,
                         is_private: false,

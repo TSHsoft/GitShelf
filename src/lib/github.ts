@@ -129,6 +129,7 @@ export async function fetchRepository(repoPath: string, token?: string, opts?: {
                 latest_release: null,
                 has_new_release: false,
                 archived: false,
+                is_favorite: false,
                 is_disabled: false,
                 is_locked: false,
                 is_private: false,
@@ -183,6 +184,7 @@ export async function fetchRepository(repoPath: string, token?: string, opts?: {
             latest_release,
             has_new_release: false, // Initial fetch
             archived: data.archived ?? false,
+            is_favorite: false,
             is_disabled: data.disabled ?? false,
             is_locked: ('locked' in data ? Boolean((data as { locked?: boolean }).locked) : false),
             is_private: data.private ?? false,
@@ -307,6 +309,7 @@ export async function syncRepository(
             is_private: data.private ?? false,
             is_empty: data.size === 0,
             status: status,
+            is_favorite: existing.is_favorite,
         }
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err)
@@ -444,6 +447,7 @@ function parseGraphQLSyncResponse(
                 updated_at: data.updatedAt || new Date().toISOString(),
                 last_synced_at: Date.now(),
                 status: 'active',
+                is_favorite: existing.is_favorite,
             }
 
             result.updated++
@@ -494,6 +498,7 @@ function parseGraphQLSyncResponse(
             is_empty: data.isEmpty,
             default_branch: data.defaultBranchRef?.name ?? existing.default_branch,
             status: status,
+            is_favorite: existing.is_favorite,
             last_synced_at: Date.now(),
         }
 
@@ -1223,6 +1228,7 @@ export async function fetchRepositoriesBatchGraphQL(
                     latest_release: null,
                     has_new_release: false,
                     archived: false,
+                    is_favorite: false,
                     is_disabled: false,
                     is_locked: false,
                     is_private: false,
@@ -1257,6 +1263,7 @@ export async function fetchRepositoriesBatchGraphQL(
                     latest_release: null,
                     has_new_release: false,
                     archived: false,
+                    is_favorite: false,
                     is_disabled: false,
                     is_locked: false,
                     is_private: false,
@@ -1289,6 +1296,7 @@ export async function fetchRepositoriesBatchGraphQL(
                 latest_release: data.latestRelease?.tagName ?? null,
                 has_new_release: false,
                 archived: data.isArchived,
+                is_favorite: false,
                 is_disabled: data.isDisabled,
                 is_locked: data.isLocked,
                 is_private: data.isPrivate,
