@@ -7,6 +7,7 @@ import { getLanguageColor } from '@/lib/github'
 import { SortableCard } from './CardView'
 import { TableRow } from './TableView'
 import { COLUMNS } from './columns'
+import { RepoDrawer } from '@/components/RepoDrawer'
 
 interface Group {
     key: string
@@ -149,12 +150,17 @@ interface GroupedViewProps {
     repos: Repository[]
     viewMode: ViewMode
     groupBy: GroupBy
+    selectedIds: Set<string> | null
+    onToggle: ((repoId: string) => void) | undefined
 }
 
-export function GroupedView({ repos, viewMode, groupBy }: GroupedViewProps) {
-    const { tags, githubToken } = useStore(useShallow(state => ({
+export function GroupedView({ repos, viewMode, groupBy, selectedIds, onToggle }: GroupedViewProps) {
+    const { tags, githubToken, markAsViewed, activeRepoId, setActiveRepoId } = useStore(useShallow(state => ({
         tags: state.data.tags,
-        githubToken: state.githubToken
+        githubToken: state.githubToken,
+        markAsViewed: state.markAsViewed,
+        activeRepoId: state.activeRepoId,
+        setActiveRepoId: state.setActiveRepoId
     })))
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
@@ -164,6 +170,12 @@ export function GroupedView({ repos, viewMode, groupBy }: GroupedViewProps) {
 
     const toggle = (key: string) =>
         setCollapsed((prev) => ({ ...prev, [key]: !(prev[key] ?? true) }))
+
+    const handleRowClick = (repoId: string) => {
+        if (!githubToken) return
+        markAsViewed(repoId)
+        setActiveRepoId(repoId)
+    }
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
@@ -197,7 +209,12 @@ export function GroupedView({ repos, viewMode, groupBy }: GroupedViewProps) {
                                     {viewMode === 'card' && (
                                         <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 p-4">
                                             {group.repos.map((repo) => (
-                                                <SortableCard key={repo.id} repo={repo} />
+                                                <SortableCard
+                                                    key={repo.id}
+                                                    repo={repo}
+                                                    selected={selectedIds?.has(repo.id) ?? false}
+                                                    selectedIds={selectedIds ? Array.from(selectedIds) : []}
+                                                />
                                             ))}
                                         </div>
                                     )}
@@ -207,9 +224,10 @@ export function GroupedView({ repos, viewMode, groupBy }: GroupedViewProps) {
                                                 <TableRow
                                                     key={repo.id}
                                                     repo={repo}
-                                                    selected={false}
-                                                    onClick={() => { }}
-                                                    onToggle={() => { }}
+                                                    selected={selectedIds?.has(repo.id) ?? false}
+                                                    selectedIds={selectedIds ? Array.from(selectedIds) : []}
+                                                    onClick={() => handleRowClick(repo.id)}
+                                                    onToggle={() => onToggle?.(repo.id)}
                                                     githubToken={githubToken}
                                                 />
                                             ))}
@@ -221,6 +239,14 @@ export function GroupedView({ repos, viewMode, groupBy }: GroupedViewProps) {
                     )
                 })}
             </div>
+
+            {/* Drawer */}
+            {activeRepoId && (
+                <RepoDrawer
+                    repoId={activeRepoId}
+                    onClose={() => setActiveRepoId(null)}
+                />
+            )}
         </div>
     )
 }

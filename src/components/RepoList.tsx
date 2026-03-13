@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react'
-import { Search, Plus, Trash2, X, Heart } from 'lucide-react'
+import { Search, Plus, Trash2, X, Heart, FolderInput } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { AddRepoModal } from './AddRepoModal'
 import { ViewSwitcher } from './ViewSwitcher'
 import { SyncButton } from './SyncButton'
+import { FolderSelectDialog } from './FolderSelectDialog'
 import { TableView } from './views/TableView'
 import { CardView } from './views/CardView'
 import { GroupedView } from './views/GroupedView'
@@ -11,10 +12,19 @@ import type { Repository } from '@/types'
 
 /** Compute the sorted flat list of repos (shared across all views) */
 function useSortedRepos(): Repository[] {
-    const { data, searchQuery, selectedTagId, sortField, sortDir, viewMode, filterLanguage, filterStars, filterUpdated, filterTag, filterType, filterFavorite } = useStore()
+    const { data, searchQuery, selectedTagId, selectedFolderId, sortField, sortDir, filterLanguage, filterStars, filterUpdated, filterTag, filterType, filterFavorite } = useStore()
 
     return useMemo(() => {
         let list = Object.values(data.repositories)
+
+        // Filter by folder
+        if (selectedFolderId === null) {
+            // Uncategorized
+            list = list.filter((r) => !r.folder_id)
+        } else if (selectedFolderId !== 'sys:all') {
+            // Specific folder
+            list = list.filter((r) => r.folder_id === selectedFolderId)
+        }
 
         // Filter by tag
         if (selectedTagId) {
@@ -84,10 +94,6 @@ function useSortedRepos(): Repository[] {
             list = list.filter(r => r.tags.includes(filterTag))
         }
 
-        if (filterTag) {
-            list = list.filter(r => r.tags.includes(filterTag))
-        }
-
 
 
 
@@ -120,7 +126,7 @@ function useSortedRepos(): Repository[] {
             const cmp = av < bv ? -1 : av > bv ? 1 : 0
             return sortDir === 'asc' ? cmp : -cmp
         })
-    }, [data.repositories, searchQuery, selectedTagId, sortField, sortDir, viewMode, data.tags, filterLanguage, filterStars, filterUpdated, filterTag, filterType, filterFavorite])
+    }, [data.repositories, searchQuery, selectedTagId, selectedFolderId, sortField, sortDir, filterLanguage, filterStars, filterUpdated, filterTag, filterType, filterFavorite])
 }
 
 import { ConfirmDialog } from './ConfirmDialog'
@@ -128,10 +134,10 @@ import { CustomSelect } from './CustomSelect'
 import { BulkTagDialog } from './BulkTagDialog'
 
 export function RepoList() {
-    const { viewMode, groupBy, searchQuery, statusFilter, setStatusFilter, removeRepository, data, filterTag, setFilterTag, filterLanguage, setFilterLanguage, filterStars, setFilterStars, filterUpdated, setFilterUpdated, filterType, setFilterType, filterFavorite, setFilterFavorite, githubToken } = useStore()
+    const { viewMode, groupBy, searchQuery, statusFilter, setStatusFilter, removeRepository, data, filterTag, setFilterTag, filterLanguage, setFilterLanguage, filterStars, setFilterStars, filterUpdated, setFilterUpdated, filterType, setFilterType, filterFavorite, setFilterFavorite, githubToken, selectedFolderId, selectedRepoIds, setSelectedRepoIds, toggleRepoSelection, clearSelection } = useStore()
     const [showAddModal, setShowAddModal] = useState(false)
     const [showBulkTagDialog, setShowBulkTagDialog] = useState(false)
-    const [selectedRepoIds, setSelectedRepoIds] = useState<Set<string>>(new Set())
+    const [showFolderSelectDialog, setShowFolderSelectDialog] = useState(false)
 
     // Confirmation State
     const [confirmAction, setConfirmAction] = useState<{
@@ -148,6 +154,12 @@ export function RepoList() {
         onConfirm: () => { }
     })
 
+    const folderName = useMemo(() => {
+        if (selectedFolderId === null) return 'Uncategorized'
+        if (selectedFolderId === 'sys:all') return 'All Repos'
+        return data.folders?.[selectedFolderId]?.name || 'Unknown Folder'
+    }, [selectedFolderId, data.folders])
+
     // Sort & Filter
     const repos = useSortedRepos()
 
@@ -162,15 +174,12 @@ export function RepoList() {
 
     // Selection Handlers
     const toggleSelection = (id: string) => {
-        const next = new Set(selectedRepoIds)
-        if (next.has(id)) next.delete(id)
-        else next.add(id)
-        setSelectedRepoIds(next)
+        toggleRepoSelection(id)
     }
 
     const toggleAll = () => {
         if (selectedRepoIds.size === filteredRepos.length) {
-            setSelectedRepoIds(new Set())
+            clearSelection()
         } else {
             setSelectedRepoIds(new Set(filteredRepos.map(r => r.id)))
         }
@@ -186,7 +195,7 @@ export function RepoList() {
             variant: 'danger',
             onConfirm: () => {
                 selectedRepoIds.forEach(id => removeRepository(id))
-                setSelectedRepoIds(new Set())
+                clearSelection()
             }
         })
     }
@@ -222,6 +231,14 @@ export function RepoList() {
                                 <Plus className="h-3.5 w-3.5" /> Tag
                             </button>
                             <button
+                                onClick={() => setShowFolderSelectDialog(true)}
+                                disabled={useStore.getState().isSyncing}
+                                title={useStore.getState().isSyncing ? "Moving to folder unavailable during global sync" : "Move to Folder"}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[var(--color-surface)] text-[var(--color-text)] text-xs font-medium border border-[var(--color-border)] hover:bg-[var(--color-surface-2)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <FolderInput className="h-3.5 w-3.5" /> Move
+                            </button>
+                            <button
                                 onClick={handleBulkDelete}
                                 disabled={useStore.getState().isSyncing}
                                 title={useStore.getState().isSyncing ? "Bulk delete unavailable during global sync" : "Bulk delete"}
@@ -232,7 +249,7 @@ export function RepoList() {
                         </div>
                         <div className="flex-1" />
                         <button
-                            onClick={() => setSelectedRepoIds(new Set())}
+                            onClick={() => clearSelection()}
                             className="p-1.5 hover:bg-[var(--color-accent)]/20 rounded text-[var(--color-accent)]"
                         >
                             <X className="h-4 w-4" />
@@ -240,6 +257,12 @@ export function RepoList() {
                     </div>
                 ) : (
                     <>
+                        {/* Breadcrumbs */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-[var(--color-text)]">{folderName}</span>
+                            <span className="text-[var(--color-text-muted)]">/</span>
+                        </div>
+
                         {/* Search & Standard Tools */}
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)]" />
@@ -418,6 +441,7 @@ export function RepoList() {
                                 setFilterType(null)
                                 setFilterFavorite(false)
                                 setStatusFilter('all')
+                                clearSelection()
                             }}
                             className="text-xs text-[var(--color-accent)] hover:underline ml-auto font-medium"
                         >
@@ -436,9 +460,15 @@ export function RepoList() {
             ) : (
                 <div className="flex-1 overflow-hidden relative flex flex-col">
                     {isGrouped ? (
-                        <GroupedView repos={filteredRepos} viewMode={viewMode} groupBy={groupBy} />
+                        <GroupedView
+                            repos={filteredRepos}
+                            viewMode={viewMode}
+                            groupBy={groupBy}
+                            selectedIds={selectedRepoIds}
+                            onToggle={toggleSelection}
+                        />
                     ) : viewMode === 'card' ? (
-                        <CardView repos={filteredRepos} />
+                        <CardView repos={filteredRepos} selectedIds={selectedRepoIds} />
                     ) : (
                         <TableView
                             repos={filteredRepos}
@@ -480,6 +510,15 @@ export function RepoList() {
                 <BulkTagDialog
                     repoIds={selectedRepoIds}
                     onClose={() => setShowBulkTagDialog(false)}
+                />
+            )}
+            {showFolderSelectDialog && (
+                <FolderSelectDialog
+                    repoIds={Array.from(selectedRepoIds)}
+                    onClose={() => {
+                        setShowFolderSelectDialog(false)
+                        clearSelection()
+                    }}
                 />
             )}
         </div>

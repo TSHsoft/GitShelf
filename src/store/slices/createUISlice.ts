@@ -4,6 +4,7 @@ import type { GitShelfStore, UISlice, Theme } from '../types'
 export const createUISlice: StateCreator<GitShelfStore, [], [], UISlice> = (set) => ({
     searchQuery: '',
     selectedTagId: null,
+    selectedFolderId: 'sys:all',
     activeRepoId: null,
     showTrash: false,
     groupBy: 'none',
@@ -19,7 +20,16 @@ export const createUISlice: StateCreator<GitShelfStore, [], [], UISlice> = (set)
     filterTag: null,
     filterType: null,
     filterFavorite: false,
+    selectedRepoIds: new Set<string>(),
 
+    setSelectedRepoIds: (selectedRepoIds) => set({ selectedRepoIds }),
+    toggleRepoSelection: (id) => set((state) => {
+        const next = new Set(state.selectedRepoIds)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        return { selectedRepoIds: next }
+    }),
+    clearSelection: () => set({ selectedRepoIds: new Set() }),
     setStatusFilter: (statusFilter) => set({ statusFilter }),
     setFilterLanguage: (filterLanguage) => set({ filterLanguage }),
     setFilterStars: (filterStars) => set({ filterStars }),
@@ -29,6 +39,7 @@ export const createUISlice: StateCreator<GitShelfStore, [], [], UISlice> = (set)
     setFilterFavorite: (filterFavorite) => set({ filterFavorite }),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
     setSelectedTagId: (selectedTagId) => set({ selectedTagId }),
+    setSelectedFolderId: (selectedFolderId) => set({ selectedFolderId }),
     setActiveRepoId: (activeRepoId) => set({ activeRepoId }),
     setShowTrash: (showTrash) => set({ showTrash }),
     setViewMode: (viewMode) =>

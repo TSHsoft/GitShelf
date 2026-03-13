@@ -1,0 +1,220 @@
+import { useState } from 'react'
+import { Folder as FolderIcon, MoreHorizontal, FolderPlus, Edit2, Trash2 } from 'lucide-react'
+import { useStore } from '@/store/useStore'
+import { FolderEditModal } from './FolderEditModal'
+import { ConfirmDialog } from './ConfirmDialog'
+import { useDroppable } from '@dnd-kit/core'
+
+function DroppableFolder({
+    id,
+    name,
+    color,
+    isSelected,
+    onClick,
+    onEdit,
+    onDelete,
+    isCollapsed,
+    count
+}: {
+    id: string
+    name: string
+    color?: string
+    isSelected: boolean
+    onClick: () => void
+    onEdit?: () => void
+    onDelete?: () => void
+    isCollapsed: boolean
+    count?: number
+}) {
+    const { isOver, setNodeRef } = useDroppable({
+        id: `folder-${id}`,
+        data: {
+            type: 'folder',
+            folderId: id === 'sys:all' || id === 'sys:uncategorized' ? null : id,
+            isSystem: id === 'sys:all' || id === 'sys:uncategorized'
+        }
+    })
+
+    const [showMenu, setShowMenu] = useState(false)
+
+    // Cannot drop into "All Repos"
+    const isDroppable = id !== 'sys:all'
+
+    return (
+        <div
+            ref={isDroppable ? setNodeRef : undefined}
+            onClick={onClick}
+            className={`group relative flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${isSelected
+                ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
+                : isOver
+                    ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-dashed border-[var(--color-accent)]'
+                    : 'text-[var(--color-text)] hover:bg-[var(--color-surface-2)]'
+                }`}
+            onMouseLeave={() => setShowMenu(false)}
+        >
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+                <FolderIcon
+                    className={`h-4 w-4 shrink-0 transition-colors ${isSelected || isOver ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'}`}
+                    style={color && !isSelected && !isOver ? { color } : undefined}
+                />
+                {!isCollapsed && <span className="truncate">{name}</span>}
+            </div>
+
+            {!isCollapsed && (
+                <div className="flex items-center justify-end shrink-0 ml-2 relative min-w-[24px] h-6">
+                    {count !== undefined && (
+                        <span className={`absolute right-0 flex items-center justify-center text-[10px] font-medium px-1.5 py-0.5 rounded-full ${isSelected ? 'text-[var(--color-accent)] bg-[var(--color-accent)]/10' : 'text-[var(--color-text-muted)] bg-[var(--color-surface-2)]'} tabular-nums transition-opacity duration-200 ${onEdit ? 'group-hover:opacity-0 pointer-events-none' : ''}`}>
+                            {count}
+                        </span>
+                    )}
+                    {onEdit && onDelete && (
+                        <>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }}
+                                className={`absolute right-0 p-1 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--color-surface-3)] z-10 ${showMenu ? 'opacity-100 bg-[var(--color-surface-3)]' : ''}`}
+                            >
+                                <MoreHorizontal className="h-3 w-3" />
+                            </button>
+                            {showMenu && (
+                                <div className="absolute right-0 top-7 z-50 w-24 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); onEdit() }}
+                                        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--color-surface-2)]"
+                                    >
+                                        <Edit2 className="h-3 w-3" />
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete() }}
+                                        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
+                                    >
+                                        <Trash2 className="h-3 w-3" />
+                                        Delete
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
+        </div>
+    )
+}
+
+export function FolderList({ isCollapsed }: { isCollapsed: boolean }) {
+    const { data, selectedFolderId, setSelectedFolderId, removeFolder } = useStore()
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
+    const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null)
+
+    const allRepos = Object.values(data.repositories || {})
+
+    const folders = Object.values(data.folders || {}).sort((a, b) => {
+        if (a.sort_order !== undefined && b.sort_order !== undefined) return a.sort_order - b.sort_order
+        return a.name.localeCompare(b.name)
+    })
+
+    const handleEdit = (id?: string) => {
+        setEditingFolderId(id || null)
+        setIsEditModalOpen(true)
+    }
+
+    const handleDelete = (id: string) => {
+        setDeletingFolderId(id)
+    }
+
+    const confirmDelete = () => {
+        if (deletingFolderId) {
+            removeFolder(deletingFolderId)
+            setDeletingFolderId(null)
+        }
+    }
+
+    // Always sort All Repos first, then Uncategorized, then user folders
+    return (
+        <div className="flex flex-col gap-0.5">
+            {!isCollapsed && (
+                <div className="flex items-center justify-between px-3 py-2 group/header">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Folders</span>
+                    <button
+                        onClick={() => handleEdit()}
+                        className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] transition-colors"
+                        title="Add Folder"
+                    >
+                        <FolderPlus className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
+
+            <div className="flex flex-col gap-0.5 px-2">
+                <DroppableFolder
+                    id="sys:all"
+                    name="All Repos"
+                    isSelected={selectedFolderId === 'sys:all'}
+                    onClick={() => setSelectedFolderId('sys:all')}
+                    isCollapsed={isCollapsed}
+                    count={allRepos.length}
+                />
+                <DroppableFolder
+                    id="sys:uncategorized"
+                    name="Uncategorized"
+                    isSelected={selectedFolderId === null || selectedFolderId === 'sys:uncategorized'}
+                    onClick={() => setSelectedFolderId(null)}
+                    isCollapsed={isCollapsed}
+                    count={allRepos.filter(r => !r.folder_id).length}
+                />
+
+                {!isCollapsed && folders.length > 0 && <div className="my-1 h-px bg-[var(--color-border)] mx-2" />}
+
+                {folders.map(folder => (
+                    <DroppableFolder
+                        key={folder.id}
+                        id={folder.id}
+                        name={folder.name}
+                        color={folder.color}
+                        isSelected={selectedFolderId === folder.id}
+                        onClick={() => setSelectedFolderId(folder.id)}
+                        onEdit={() => handleEdit(folder.id)}
+                        onDelete={() => handleDelete(folder.id)}
+                        isCollapsed={isCollapsed}
+                        count={allRepos.filter(r => r.folder_id === folder.id).length}
+                    />
+                ))}
+            </div>
+
+            {isCollapsed && (
+                <div className="px-2 mt-2">
+                    <button
+                        onClick={() => handleEdit()}
+                        className="flex w-full items-center justify-center rounded-lg p-2.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] transition-colors"
+                        title="Add Folder"
+                    >
+                        <FolderPlus className="h-4 w-4 text-[var(--color-accent)]" />
+                    </button>
+                </div>
+            )}
+
+            {isEditModalOpen && (
+                <FolderEditModal
+                    folderId={editingFolderId}
+                    onClose={() => {
+                        setIsEditModalOpen(false)
+                        setEditingFolderId(null)
+                    }}
+                />
+            )}
+
+            {deletingFolderId && (
+                <ConfirmDialog
+                    isOpen={!!deletingFolderId}
+                    title="Delete Folder"
+                    description={<>Are you sure you want to delete folder <strong>{data.folders[deletingFolderId]?.name}</strong>? Repositories in this folder will be moved to <strong>Uncategorized</strong>. This action cannot be undone.</>}
+                    variant="danger"
+                    confirmLabel="Delete"
+                    onConfirm={confirmDelete}
+                    onClose={() => setDeletingFolderId(null)}
+                />
+            )}
+        </div>
+    )
+}

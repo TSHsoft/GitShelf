@@ -1,14 +1,16 @@
 import { useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Trash2, Tag as TagIcon, Archive, AlertTriangle, RefreshCw, Star, Heart } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Trash2, Tag as TagIcon, Archive, AlertTriangle, RefreshCw, Star, Heart, MoreHorizontal, FolderInput, BookOpen, User, Book } from 'lucide-react'
 import type { Repository, SortField, RepoStatus } from '@/types'
 import { useStore } from '@/store/useStore'
 import { formatStars } from '@/lib/github'
 import { formatDate } from '@/lib/utils'
-import { TagEditor } from '@/components/TagEditor'
+import { TagEditModal } from '@/components/TagEditModal'
 import { LanguageBar } from '@/components/LanguageBar'
 import { RepoDrawer } from '@/components/RepoDrawer'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { FolderSelectDialog } from '@/components/FolderSelectDialog'
+import { PortalMenu } from '@/components/PortalMenu'
 
 function StatusBadge({ status }: { status: RepoStatus }) {
     switch (status) {
@@ -54,19 +56,35 @@ function StatusBadge({ status }: { status: RepoStatus }) {
 
 
 
-export function TableRow({ repo, onClick, selected, onToggle, githubToken }: {
+import { useDraggable } from '@dnd-kit/core'
+
+export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githubToken }: {
     repo: Repository;
     onClick: () => void;
     selected: boolean;
+    selectedIds: string[];
     onToggle: () => void;
     githubToken: string | null;
 }) {
     const { data, removeRepository, syncRepository, toggleFavorite, syncingRepoIds, syncErrors, isOnline } = useStore()
+
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+        id: repo.id,
+        data: {
+            type: 'repository',
+            repoId: repo.id,
+            selectedIds: selected ? selectedIds : [repo.id]
+        }
+    })
     const tags = repo.tags.map((id) => data.tags[id]).filter(Boolean)
     const isSyncing = syncingRepoIds.includes(repo.id)
     const syncError = syncErrors[repo.id]
     const hasError = !!syncError
+    const menuTriggerRef = useRef<HTMLButtonElement>(null)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const [showFolderSelect, setShowFolderSelect] = useState(false)
+    const [showMenu, setShowMenu] = useState(false)
+    const [showTagEditor, setShowTagEditor] = useState(false)
 
     // Star Diff
     const starDiff = repo.prev_stars !== undefined ? repo.stars - repo.prev_stars : 0
@@ -76,8 +94,10 @@ export function TableRow({ repo, onClick, selected, onToggle, githubToken }: {
 
     return (
         <div
-            onClick={onClick}
-            className={`group flex flex-col border-b border-[var(--color-border)]/50 px-4 py-3 text-sm transition-colors cursor-pointer relative ${selected ? 'bg-[var(--color-accent)]/5 hover:bg-[var(--color-accent)]/10' : 'hover:bg-[var(--color-surface-2)]'}`}
+            ref={setNodeRef}
+            {...attributes}
+            {...listeners}
+            className={`group flex flex-col border-b border-[var(--color-border)]/50 px-4 py-3 text-sm transition-colors cursor-pointer relative ${isDragging ? 'opacity-50' : ''} ${selected ? 'bg-[var(--color-accent)]/5 hover:bg-[var(--color-accent)]/10' : 'hover:bg-[var(--color-surface-2)]'}`}
         >
             {/* Main Columns Row */}
             <div className="flex items-center w-full">
@@ -93,7 +113,8 @@ export function TableRow({ repo, onClick, selected, onToggle, githubToken }: {
 
                 {/* Name & Description */}
                 <div className="flex-[3] min-w-0 flex flex-col justify-center">
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-1.5">
+                        {repo.type === 'profile' ? <User className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" /> : <Book className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />}
                         <span className="text-[var(--color-text)] font-medium truncate">{repo.owner}/{repo.name}</span>
                         {tags.length > 0 && (
                             <div className="flex gap-1 shrink-0">
@@ -162,6 +183,13 @@ export function TableRow({ repo, onClick, selected, onToggle, githubToken }: {
                 {/* Actions (stop propagation to avoid drawer opening) */}
                 <div className="w-24 flex items-center justify-end shrink-0" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center">
+                        <button
+                            onClick={onClick}
+                            className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors"
+                            title="View Details"
+                        >
+                            <BookOpen className="h-3.5 w-3.5" />
+                        </button>
                         {/* Sync Button */}
                         <div className="relative group/sync">
                             <button
@@ -197,16 +225,51 @@ export function TableRow({ repo, onClick, selected, onToggle, githubToken }: {
                         <a href={repo.url} target="_blank" rel="noopener noreferrer" className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]" title="Open in GitHub">
                             <ExternalLink className="h-3.5 w-3.5" />
                         </a>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
-                            disabled={useStore.getState().isSyncing}
-                            className={`rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors ${useStore.getState().isSyncing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            title={useStore.getState().isSyncing ? "Cannot delete during global sync" : "Delete Repository"}
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+
+                        <div className="relative">
+                            <button
+                                ref={menuTriggerRef}
+                                onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }}
+                                className={`rounded p-1 transition-colors ${showMenu ? 'bg-[var(--color-surface-3)] text-[var(--color-text)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]'}`}
+                                title="More actions"
+                            >
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                            </button>
+
+                            {showMenu && (
+                                <PortalMenu
+                                    triggerRef={menuTriggerRef}
+                                    onClose={() => setShowMenu(false)}
+                                >
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowFolderSelect(true) }}
+                                        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-2)]"
+                                        disabled={useStore.getState().isSyncing}
+                                    >
+                                        <FolderInput className="h-3.5 w-3.5" />
+                                        Move to folder
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowTagEditor(true) }}
+                                        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-2)]"
+                                        disabled={useStore.getState().isSyncing}
+                                    >
+                                        <TagIcon className="h-3.5 w-3.5" />
+                                        Edit tags
+                                    </button>
+                                    <div className="my-1 border-t border-[var(--color-border)]" />
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowDeleteConfirm(true) }}
+                                        disabled={useStore.getState().isSyncing}
+                                        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        Remove item
+                                    </button>
+                                </PortalMenu>
+                            )}
+                        </div>
                     </div>
-                    <TagEditor repoId={repo.id} currentTags={repo.tags} />
                 </div>
             </div>
 
@@ -227,12 +290,27 @@ export function TableRow({ repo, onClick, selected, onToggle, githubToken }: {
             {showDeleteConfirm && (
                 <ConfirmDialog
                     isOpen={showDeleteConfirm}
-                    title="Delete Repository"
-                    description={<>Are you sure you want to delete <strong>{repo.owner}/{repo.name}</strong>? This action cannot be undone.</>}
+                    title="Remove Item"
+                    description={<>Are you sure you want to remove <strong>{repo.owner}/{repo.name}</strong>? This action cannot be undone.</>}
                     variant="danger"
-                    confirmLabel="Delete"
+                    confirmLabel="Remove"
                     onConfirm={() => removeRepository(repo.id)}
                     onClose={() => setShowDeleteConfirm(false)}
+                />
+            )}
+
+            {showFolderSelect && (
+                <FolderSelectDialog
+                    repoIds={[repo.id]}
+                    onClose={() => setShowFolderSelect(false)}
+                />
+            )}
+
+            {showTagEditor && (
+                <TagEditModal
+                    repoId={repo.id}
+                    initialTags={repo.tags}
+                    onClose={() => setShowTagEditor(false)}
                 />
             )}
         </div>
@@ -247,9 +325,10 @@ interface TableViewProps {
 }
 
 export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableViewProps) {
-    const { sortField, sortDir, setSortField, setSortDir, markAsViewed, githubToken } = useStore()
+    const { sortField, sortDir, setSortField, setSortDir, markAsViewed, githubToken, activeRepoId, setActiveRepoId } = useStore()
     const parentRef = useRef<HTMLDivElement>(null)
-    const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null)
+
+
 
     // Virtualization
     // eslint-disable-next-line
@@ -272,7 +351,7 @@ export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableVi
     const handleRowClick = (repoId: string) => {
         if (!githubToken) return
         markAsViewed(repoId)
-        setSelectedRepoId(repoId)
+        setActiveRepoId(repoId)
     }
 
     const SortIcon = ({ field }: { field: SortField }) => {
@@ -289,7 +368,7 @@ export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableVi
     return (
         <>
             <div className="flex flex-col flex-1 min-h-0 bg-[var(--color-bg)]">
-                <div className="flex items-center border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs font-semibold text-[var(--color-text-muted)] z-10 w-full">
+                <div className="flex items-center border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs font-semibold text-[var(--color-text-muted)] z-10 w-full relative">
                     <div className="w-10 flex items-center justify-center">
                         <input
                             type="checkbox"
@@ -361,7 +440,7 @@ export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableVi
                 </div>
 
                 {/* Rows */}
-                <div ref={parentRef} className="flex-1 overflow-y-auto w-full">
+                <div ref={parentRef} className="flex-1 overflow-y-auto w-full relative">
                     <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
                         {virtualizer.getVirtualItems().map((vItem) => {
                             const repo = repos[vItem.index]
@@ -370,12 +449,19 @@ export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableVi
                                     key={vItem.key}
                                     data-index={vItem.index}
                                     ref={virtualizer.measureElement}
-                                    style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${vItem.start}px)` }}
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        transform: `translateY(${vItem.start}px)`
+                                    }}
                                 >
                                     <TableRow
                                         repo={repo}
                                         onClick={() => handleRowClick(repo.id)}
                                         selected={selectedIds?.has(repo.id) ?? false}
+                                        selectedIds={selectedIds ? Array.from(selectedIds) : []}
                                         onToggle={() => onToggle?.(repo.id)}
                                         githubToken={githubToken}
                                     />
@@ -387,10 +473,10 @@ export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableVi
             </div>
 
             {/* Drawer */}
-            {selectedRepoId && (
+            {activeRepoId && (
                 <RepoDrawer
-                    repoId={selectedRepoId}
-                    onClose={() => setSelectedRepoId(null)}
+                    repoId={activeRepoId}
+                    onClose={() => setActiveRepoId(null)}
                 />
             )}
         </>

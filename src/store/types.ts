@@ -1,4 +1,4 @@
-import type { GitShelfData, Repository, Tag, Settings, ViewMode, SortField, SortDir, GroupBy, RepoStatus } from '@/types'
+import type { GitShelfData, Repository, Tag, Folder, Settings, ViewMode, SortField, SortDir, GroupBy, RepoStatus } from '@/types'
 
 export type Theme = 'dark' | 'light'
 
@@ -18,6 +18,11 @@ export interface DataSlice {
     removeTag: (id: string) => void
     updateTag: (id: string, updates: Partial<Tag>) => void
     bulkAddTags: (repoIds: string[], tagIds: string[]) => void
+    addFolder: (folder: Folder) => void
+    removeFolder: (id: string) => void
+    updateFolder: (id: string, updates: Partial<Folder>) => void
+    moveRepoToFolder: (repoId: string, folderId: string | null) => void
+    bulkMoveReposToFolder: (repoIds: string[], folderId: string | null) => void
     updateSettings: (updates: Partial<Settings>) => void
     setLoaded: (loaded: boolean) => void
     resetData: () => void
@@ -26,6 +31,7 @@ export interface DataSlice {
 export interface UISlice {
     searchQuery: string
     selectedTagId: string | null
+    selectedFolderId: string | null
     activeRepoId: string | null
     showTrash: boolean
     groupBy: GroupBy
@@ -41,6 +47,8 @@ export interface UISlice {
     filterTag: string | null
     filterType: 'repository' | 'profile' | null
     filterFavorite: boolean
+    selectedRepoIds: Set<string>
+
 
     setStatusFilter: (status: 'all' | RepoStatus) => void
     setFilterLanguage: (lang: string | null) => void
@@ -51,6 +59,7 @@ export interface UISlice {
     setFilterFavorite: (favorite: boolean) => void
     setSearchQuery: (q: string) => void
     setSelectedTagId: (id: string | null) => void
+    setSelectedFolderId: (id: string | null) => void
     setActiveRepoId: (id: string | null) => void
     setShowTrash: (show: boolean) => void
     setViewMode: (mode: ViewMode) => void
@@ -59,6 +68,9 @@ export interface UISlice {
     setGroupBy: (g: GroupBy) => void
     toggleTheme: () => void
     toggleDrawerTheme: () => void
+    setSelectedRepoIds: (ids: Set<string>) => void
+    toggleRepoSelection: (id: string) => void
+    clearSelection: () => void
 }
 
 export interface SyncSlice {

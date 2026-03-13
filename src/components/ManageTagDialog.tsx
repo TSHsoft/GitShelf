@@ -32,9 +32,10 @@ interface SortableTagProps {
     cancelEdit: () => void
     startEdit: (tag: Tag) => void
     handleDelete: (id: string, e: React.MouseEvent) => void
+    setError: (err: string | null) => void
 }
 
-const SortableTag = memo(function SortableTag({ tag, isEditing, editingName, setEditingName, commitEdit, cancelEdit, startEdit, handleDelete }: SortableTagProps) {
+const SortableTag = memo(function SortableTag({ tag, isEditing, editingName, setEditingName, commitEdit, cancelEdit, startEdit, handleDelete, setError }: SortableTagProps) {
     const {
         attributes,
         listeners,
@@ -65,37 +66,42 @@ const SortableTag = memo(function SortableTag({ tag, isEditing, editingName, set
                 startEdit(tag)
             }}
             className={`
-                group flex items-center justify-center gap-1.5 relative px-3 py-1.5 rounded-full text-xs font-medium border touch-none outline-none select-none
+                group flex items-center relative min-w-[55px] max-w-[200px] h-[28px] rounded-full text-xs font-medium border touch-none outline-none select-none px-1
                 ${isEditing ? 'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-[var(--color-surface)]' : 'cursor-grab'}
             `}
         >
             {isEditing ? (
-                <input
-                    autoFocus
-                    value={editingName}
-                    onChange={e => setEditingName(e.target.value.slice(0, 20))}
-                    onKeyDown={e => {
-                        if (e.key === 'Enter') commitEdit()
-                        if (e.key === 'Escape') cancelEdit()
-                    }}
-                    onDoubleClick={e => e.stopPropagation()}
-                    onPointerDown={e => e.stopPropagation()}
-                    maxLength={20}
-                    className="w-min min-w-[60px] max-w-[120px] bg-transparent outline-none text-center"
-                    style={{ width: `${Math.max(editingName.length, 4)}ch` }}
-                />
+                <div className="flex-1 flex justify-center">
+                    <input
+                        autoFocus
+                        value={editingName}
+                        onChange={e => { setEditingName(e.target.value.slice(0, 25)); setError(null) }}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter') commitEdit()
+                            if (e.key === 'Escape') cancelEdit()
+                        }}
+                        onDoubleClick={e => e.stopPropagation()}
+                        onPointerDown={e => e.stopPropagation()}
+                        maxLength={25}
+                        className="w-min min-w-[60px] max-w-[120px] bg-transparent outline-none text-center"
+                        style={{ width: `${Math.max(editingName.length, 4)}ch` }}
+                    />
+                </div>
             ) : (
-                <span className="truncate max-w-[150px]">{tag.name}</span>
-            )}
-
-            {!isEditing && (
-                <button
-                    onClick={(e) => handleDelete(tag.id, e)}
-                    onPointerDown={e => e.stopPropagation()}
-                    className="ml-1 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition-opacity"
-                >
-                    <X className="h-3 w-3" />
-                </button>
+                <>
+                    {/* Left Spacer to balance the delete button on the right */}
+                    <div className="w-5 shrink-0" />
+                    <span className="truncate flex-1 text-center px-1 leading-normal">
+                        {tag.name}
+                    </span>
+                    <button
+                        onClick={(e) => handleDelete(tag.id, e)}
+                        onPointerDown={e => e.stopPropagation()}
+                        className="w-5 h-5 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition-all shrink-0"
+                    >
+                        <X className="h-3 w-3" />
+                    </button>
+                </>
             )}
         </div>
     )
@@ -177,15 +183,16 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
             setIsAdding(false)
             return
         }
-        if (name.length > 20) {
-            setError('Tag name must be 20 characters or less')
+        if (name.length > 25) {
+            setError('Tag name must be 25 characters or less')
             return
         }
         if (tags.some(t => t.name.toLowerCase() === name.toLowerCase())) {
-            setError('Tag already exists')
+            setError('Tags already exists')
             return
         }
-        const newTag: Tag = { id: nanoid(), name, color: generateTagColor() }
+        const lastColor = tags.length > 0 ? tags[0].color : undefined
+        const newTag: Tag = { id: nanoid(), name, color: generateTagColor(lastColor) }
         pushHistory([newTag, ...tags])
         setIsAdding(false)
         setNewTagName('')
@@ -211,12 +218,12 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
             setEditingId(null)
             return
         }
-        if (name.length > 20) {
-            setError('Tag name must be 20 characters or less')
+        if (name.length > 25) {
+            setError('Tag name must be 25 characters or less')
             return
         }
         if (tags.some(t => t.id !== editingId && t.name.toLowerCase() === name.toLowerCase())) {
-            setError('Tag already exists')
+            setError('Tags already exists')
             return
         }
 
@@ -301,50 +308,62 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
                 e.stopPropagation();
             }}
         >
-            <div className="w-full max-w-2xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl flex flex-col max-h-[85vh]">
-                <div className="p-6 pb-4 flex items-center justify-between border-b border-[var(--color-border)]">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-full bg-[var(--color-surface-2)]">
-                            <TagIcon className="h-5 w-5 text-[var(--color-accent)]" />
+            <div 
+                className="w-full max-w-2xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl flex flex-col max-h-[85vh]"
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        const target = e.target as HTMLElement;
+                        // Only allow Enter if we are typing in a tag input (handled in TagSelector/local inputs)
+                        if (target.tagName !== 'INPUT') {
+                            e.preventDefault();
+                        }
+                    }
+                }}
+            >
+                <div className="p-6 flex items-center justify-between border-b border-[var(--color-border)]">
+                    <div className="flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-surface-2)] text-[var(--color-accent)] shadow-sm">
+                            <TagIcon className="h-6 w-6" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-semibold text-[var(--color-text)] leading-tight">Manage Tags</h2>
-                            <p className="text-sm text-[var(--color-text-muted)] mt-0.5">Drag to reorder. Double-click to edit.</p>
+                            <h2 className="text-base font-bold text-[var(--color-text)] leading-tight">Manage Tags</h2>
+                            <p className="text-xs text-[var(--color-text-muted)] mt-1">Drag to reorder. Double-click to edit.</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-1 bg-[var(--color-surface-2)] p-1 rounded-lg border border-[var(--color-border)]">
-                        <button
-                            type="button"
-                            onClick={handleUndo}
-                            disabled={history.past.length === 0}
-                            className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)] disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                            title="Undo"
+                    <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 group-h-header-actions">
+                            <button
+                                type="button"
+                                onClick={handleUndo}
+                                disabled={history.past.length === 0}
+                                className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)] disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                                title="Undo"
+                            >
+                                <Undo className="h-4 w-4" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleRedo}
+                                disabled={history.future.length === 0}
+                                className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)] disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                                title="Redo"
+                            >
+                                <Redo className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <div className="w-px h-4 bg-[var(--color-border)] mx-1" />
+                        <button 
+                            type="button" 
+                            onClick={onClose} 
+                            className="p-2 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] transition-all shrink-0"
                         >
-                            <Undo className="h-4 w-4" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleRedo}
-                            disabled={history.future.length === 0}
-                            className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)] disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                            title="Redo"
-                        >
-                            <Redo className="h-4 w-4" />
-                        </button>
-                        <button type="button" onClick={onClose} className="rounded-lg p-1.5 ml-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] transition-colors shrink-0">
                             <X className="h-4 w-4" />
                         </button>
                     </div>
                 </div>
 
-                {error && (
-                    <div className="px-6 py-2 bg-[var(--color-danger)]/10 border-b border-[var(--color-danger)]/20 text-[var(--color-danger)] text-xs font-medium text-center">
-                        {error}
-                    </div>
-                )}
-
-                <div className="p-6 overflow-y-auto flex-1 bg-[var(--color-surface-2)]/30 min-h-[200px]" onClick={() => { setIsAdding(false); setEditingId(null) }}>
+                <div className="p-6 overflow-y-auto flex-1 bg-[var(--color-surface-2)]/30 min-h-[240px]" onClick={() => { setIsAdding(false); setEditingId(null); setError(null) }}>
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -354,33 +373,36 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
                             items={tags.map(t => t.id)}
                             strategy={rectSortingStrategy}
                         >
-                            <div className="flex flex-wrap gap-2.5 items-start content-start">
-                                {isAdding ? (
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)]/10 shadow-sm" onClick={e => e.stopPropagation()}>
-                                        <input
-                                            ref={addInputRef}
-                                            value={newTagName}
-                                            onChange={e => setNewTagName(e.target.value.slice(0, 20))}
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter') commitAdd()
-                                                if (e.key === 'Escape') setIsAdding(false)
-                                            }}
-                                            maxLength={20}
-                                            placeholder="Tag name"
-                                            className="w-24 bg-transparent text-xs text-[var(--color-text)] outline-none"
-                                        />
-                                        <span className="text-[10px] text-[var(--color-text-muted)] shrink-0">{newTagName.length}/20</span>
-                                    </div>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); setIsAdding(true); setNewTagName(''); setError(null) }}
-                                        className="flex items-center justify-center px-3 py-1.5 rounded-full border border-dashed border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)] transition-colors text-xs font-medium"
-                                    >
-                                        <Plus className="h-3.5 w-3.5 mr-1" />
-                                        Add Tag
-                                    </button>
-                                )}
+                            <div className="flex flex-wrap gap-3 items-start content-start">
+                                <div className="relative">
+                                    {isAdding ? (
+                                        <div className="flex items-center gap-2 px-3 h-[28px] rounded-full border border-[var(--color-accent)] bg-[var(--color-surface)] shadow-sm animate-in zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
+                                            <input
+                                                ref={addInputRef}
+                                                value={newTagName}
+                                                onChange={e => { setNewTagName(e.target.value.slice(0, 25)); setError(null) }}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') commitAdd()
+                                                    if (e.key === 'Escape') setIsAdding(false)
+                                                }}
+                                                maxLength={25}
+                                                placeholder="Tag name"
+                                                autoComplete="off"
+                                                className="w-24 bg-transparent text-xs text-[var(--color-text)] outline-none font-medium"
+                                            />
+                                            <span className="text-[10px] text-[var(--color-text-muted)] shrink-0 font-bold">{newTagName.length}/25</span>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setIsAdding(true); setNewTagName(''); setError(null) }}
+                                            className="flex items-center justify-center px-3 py-1.5 rounded-full border border-dashed border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)] transition-colors text-xs font-medium h-[28px]"
+                                        >
+                                            <Plus className="h-3.5 w-3.5 mr-1.5" />
+                                            Add Tag
+                                        </button>
+                                    )}
+                                </div>
 
                                 {tags.map((tag) => (
                                     <SortableTag
@@ -393,6 +415,7 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
                                         cancelEdit={cancelEdit}
                                         startEdit={startEdit}
                                         handleDelete={handleDelete}
+                                        setError={setError}
                                     />
                                 ))}
                             </div>
@@ -400,21 +423,30 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
                     </DndContext>
                 </div>
 
-                <div className="p-6 pt-4 flex items-center justify-end gap-3 border-t border-[var(--color-border)]">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-5 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-muted)] transition-colors"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleSave}
-                        className="px-5 py-2.5 rounded-xl bg-[var(--color-accent)] text-white text-sm font-semibold hover:bg-[var(--color-accent)]/90 shadow-sm transition-all active:scale-[0.98]"
-                    >
-                        Save Changes
-                    </button>
+                <div className="p-6 pt-4 flex items-center justify-between border-t border-[var(--color-border)]">
+                    <div className="flex-1 min-w-0">
+                        {error && (
+                            <p className="text-xs font-medium text-[var(--color-danger)] animate-in fade-in slide-in-from-left-2 duration-200 truncate">
+                                {error}
+                            </p>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-4">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface)] transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSave}
+                            className="px-4 py-2 rounded-xl bg-[var(--color-accent)] text-white text-xs font-semibold hover:bg-[var(--color-accent-hover)] shadow-sm transition-all active:scale-[0.98]"
+                        >
+                            Save Changes
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>,

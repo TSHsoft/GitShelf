@@ -67,10 +67,10 @@ export function BulkTagDialog({ repoIds, onClose }: BulkTagDialogProps) {
                             <TagIcon className="h-5 w-5 text-[var(--color-accent)]" />
                         </div>
                         <div className="flex-1">
-                            <h3 className="text-base font-semibold text-[var(--color-text)] leading-none mb-2">
+                            <h3 className="text-base font-bold text-[var(--color-text)] leading-none mb-2">
                                 Add Tags to {repoIds.size} Repositories
                             </h3>
-                            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                            <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
                                 Select tags to add to the selected repositories. Existing tags will be preserved.
                             </p>
                         </div>
@@ -132,7 +132,7 @@ export function BulkTagDialog({ repoIds, onClose }: BulkTagDialogProps) {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-muted)] transition-colors"
+                            className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface)] transition-colors"
                         >
                             Cancel
                         </button>
@@ -140,7 +140,7 @@ export function BulkTagDialog({ repoIds, onClose }: BulkTagDialogProps) {
                             type="button"
                             onClick={handleSave}
                             disabled={selectedTagIds.size === 0}
-                            className="px-3 py-2 rounded-lg bg-[var(--color-accent)] text-white text-xs font-medium hover:bg-[var(--color-accent)]/90 border-transparent shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-4 py-2 rounded-xl bg-[var(--color-accent)] text-white text-xs font-semibold hover:bg-[var(--color-accent-hover)] border-transparent shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Add Tags
                         </button>

@@ -137,90 +137,114 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
             }}
         >
             <div
-                className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-2xl flex flex-col max-h-[85vh]"
+                className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
-                <div className="mb-5 flex items-center justify-between">
-                    <h2 className="text-base font-semibold text-[var(--color-text)]">Add to Shelf</h2>
-                    <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] transition-colors">
-                        <X className="h-4 w-4" />
-                    </button>
-                </div>
+                <button
+                    onClick={onClose}
+                    className="absolute right-4 top-4 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors p-1.5 rounded-lg hover:bg-[var(--color-surface-2)]"
+                >
+                    <X className="h-4 w-4" />
+                </button>
 
-                {/* Input */}
-                <div className="flex gap-2">
-                    <input
-                        autoFocus
-                        value={input}
-                        onChange={(e) => { setInput(e.target.value); setError(null); setPreview(null) }}
-                        onKeyDown={(e) => e.key === 'Enter' && !loading && handleFetch()}
-                        placeholder="GitHub repo or profile URL"
-                        className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3.5 py-2.5 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent)] transition-colors"
-                    />
-                    <button
-                        type="button"
-                        onClick={handleFetch}
-                        disabled={loading || !input.trim()}
-                        className="flex items-center gap-2 rounded-lg bg-[var(--color-accent)] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Fetch'}
-                    </button>
-                </div>
-                <p className="mt-1.5 text-[10px] text-[var(--color-text-subtle)] px-0.5">
-                    Supports <span className="font-medium text-[var(--color-text-muted)]">owner/repo</span> format, full GitHub URLs, or a <span className="font-medium text-[var(--color-text-muted)]">github.com/username</span> profile link.
-                </p>
-
-                {/* Error */}
-                {error && (
-                    <div className="mt-3 flex items-start gap-2 rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 px-3 py-2.5">
-                        <AlertCircle className="h-4 w-4 text-[var(--color-danger)] shrink-0 mt-0.5" />
-                        <p className="text-xs text-[var(--color-danger)]">{error}</p>
+                <div className="p-6">
+                    {/* Header */}
+                    <div className="mb-6 flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-surface-2)] text-[var(--color-accent)] shadow-sm">
+                            <GitBranch className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-semibold text-[var(--color-text)] leading-tight">Add to Shelf</h2>
+                            <p className="text-sm text-[var(--color-text-muted)] mt-0.5">Import any GitHub repository or profile</p>
+                        </div>
                     </div>
-                )}
 
-                {/* Preview */}
-                {preview && (
-                    <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 animate-fade-in flex flex-col flex-1 overflow-y-auto min-h-[100px]">
-                        <div className="flex items-start justify-between gap-2 mb-2 shrink-0">
-                            <div>
-                                <p className="text-xs text-[var(--color-text-muted)]">{preview.owner}</p>
-                                <h3 className="text-sm font-semibold text-[var(--color-text)]">{preview.name}</h3>
+                    {/* Input Area */}
+                    <div className="space-y-4">
+                        <div className="flex gap-3">
+                            <input
+                                autoFocus
+                                value={input}
+                                onChange={(e) => { setInput(e.target.value); setError(null); setPreview(null) }}
+                                onKeyDown={(e) => e.key === 'Enter' && !loading && handleFetch()}
+                                placeholder="GitHub repo or profile URL"
+                                autoComplete="off"
+                                className="flex-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2.5 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] transition-all"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleFetch}
+                                disabled={loading || !input.trim()}
+                                className="flex items-center gap-2 rounded-xl bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm active:scale-[0.98]"
+                            >
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Fetch'}
+                            </button>
+                        </div>
+                        <p className="text-[10px] text-[var(--color-text-subtle)] px-0.5 leading-relaxed">
+                            Supports <span className="font-semibold text-[var(--color-text-muted)]">owner/repo</span> format, full GitHub URLs, or a <span className="font-semibold text-[var(--color-text-muted)]">github.com/username</span> profile link.
+                        </p>
+                    </div>
+
+                    {/* Error */}
+                    {error && (
+                        <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <AlertCircle className="h-4 w-4 text-[var(--color-danger)] shrink-0 mt-0.5" />
+                            <p className="text-xs text-[var(--color-danger)] font-medium leading-relaxed">{error}</p>
+                        </div>
+                    )}
+
+                    {/* Preview Area */}
+                    {preview && (
+                        <div className="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-5 animate-fade-in flex flex-col gap-4">
+                            <div className="flex items-start justify-between gap-3 min-w-0">
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] text-[var(--color-accent)] font-bold uppercase tracking-wider mb-0.5 truncate">{preview.owner}</p>
+                                    <h3 className="text-base font-bold text-[var(--color-text)] leading-tight truncate">{preview.name}</h3>
+                                </div>
+                                <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)] shrink-0 bg-[var(--color-surface)]/50 px-2 py-1 rounded-lg border border-[var(--color-border)]/50">
+                                    <span className="flex items-center gap-1.5"><Star className="h-3.5 w-3.5" />{formatStars(preview.stars)}</span>
+                                    {preview.latest_release && (
+                                        <span className="flex items-center gap-1.5 text-[var(--color-success)] font-medium">
+                                            <GitBranch className="h-3.5 w-3.5" />{preview.latest_release}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)] shrink-0">
-                                <span className="flex items-center gap-1"><Star className="h-3 w-3" />{formatStars(preview.stars)}</span>
-                                {preview.latest_release && (
-                                    <span className="flex items-center gap-1 text-[var(--color-success)]">
-                                        <GitBranch className="h-3 w-3" />{preview.latest_release}
+
+                            {preview.description && (
+                                <p className="text-xs text-[var(--color-text-subtle)] line-clamp-2 leading-relaxed">{preview.description}</p>
+                            )}
+
+                            <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
+                                {preview.language && (
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full bg-[var(--color-accent)]" />
+                                        {preview.language}
                                     </span>
                                 )}
+                                {preview.archived && <span className="text-[var(--color-warning)] bg-[var(--color-warning)]/10 px-1.5 py-0.5 rounded border border-[var(--color-warning)]/20">Archived</span>}
                             </div>
-                        </div>
-                        {preview.description && (
-                            <p className="text-xs text-[var(--color-text-subtle)] line-clamp-2 mb-3">{preview.description}</p>
-                        )}
-                        <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)] mb-4">
-                            {preview.language && <span>{preview.language}</span>}
-                            {preview.archived && <span className="text-[var(--color-warning)]">Archived</span>}
-                        </div>
 
-                        {/* Tag selector */}
-                        <div className="flex-1 overflow-y-auto min-h-0 shrink pr-2 mb-4">
-                            <TagSelector
-                                selectedTagIds={selectedTagIds}
-                                onChange={setSelectedTagIds}
-                            />
-                        </div>
+                            <div className="h-px bg-[var(--color-border)]/50 my-1" />
 
-                        <button
-                            type="button"
-                            onClick={handleAdd}
-                            className="w-full rounded-lg bg-[var(--color-accent)] py-2.5 text-sm font-semibold text-white transition-all hover:bg-[var(--color-accent-hover)] active:scale-[0.98]"
-                        >
-                            Add to Shelf
-                        </button>
-                    </div>
-                )}
+                            {/* Tag selector */}
+                            <div className="max-h-[120px] overflow-y-auto pr-1">
+                                <TagSelector
+                                    selectedTagIds={selectedTagIds}
+                                    onChange={setSelectedTagIds}
+                                />
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={handleAdd}
+                                className="w-full rounded-xl bg-[var(--color-accent)] py-2.5 text-sm font-bold text-white transition-all hover:bg-[var(--color-accent-hover)] active:scale-[0.98] shadow-sm"
+                            >
+                                Add to Shelf
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
         </div >
     )

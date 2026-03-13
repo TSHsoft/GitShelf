@@ -3,22 +3,134 @@ import { useStore } from '@/store/useStore'
 import { Sidebar } from '@/components/Sidebar'
 import { RepoList } from '@/components/RepoList'
 import { useEffect } from 'react'
-import { AlertTriangle, Settings, WifiOff } from 'lucide-react'
+import { AlertTriangle, Settings, WifiOff, User, Book } from 'lucide-react'
 import { SettingsModal } from '@/components/SettingsModal'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { useState } from 'react'
 import { useGithubRateLimit } from '@/hooks/useGithubRateLimit'
 import { Toaster } from 'sonner'
 import { useLocalPersistence, useAutoSave } from '@/hooks/useGistSync'
-import { AuthCallback } from '@/components/AuthCallback'
 import { LoginPage } from '@/components/LoginPage'
+import { AuthCallback } from '@/components/AuthCallback'
 import { fetchAuthenticatedUserProfile } from '@/lib/github'
 import { decryptTokenAsync } from '@/lib/crypto'
+import { DndContext, DragOverlay, pointerWithin, rectIntersection, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import type { CollisionDetection, Modifier } from '@dnd-kit/core'
+import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
+
+import type { Repository } from '@/types'
 
 function AppContent() {
-  const { isLoaded, data, theme, patStatus, isOnline, setIsOnline, githubToken, userProfile, setUserProfile } = useStore()
+  const { data, theme, patStatus, isOnline, setIsOnline, githubToken, userProfile, setUserProfile, moveRepoToFolder, bulkMoveReposToFolder, rateLimitRemaining, isLoaded, clearSelection } = useStore()
+
   const { scheduleSave } = useAutoSave()
   const [showSettings, setShowSettings] = useState(false)
+
+  // Drag and Drop state
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeRepo, setActiveRepo] = useState<Repository | null>(null)
+  const [draggedIds, setDraggedIds] = useState<string[]>([])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px movement before dragging starts
+      },
+    })
+  )
+
+  /**
+   * Modifier to precisely snap the top-left corner of the dragged overlay
+   * exactly to the cursor. This creates the "badge is the cursor" feel!
+   */
+  const snapTopLeftToCursor: Modifier = ({ transform, activatorEvent, activeNodeRect }) => {
+    if (activatorEvent && activeNodeRect) {
+      const isTouch = 'touches' in activatorEvent;
+      const clientX = isTouch ? (activatorEvent as TouchEvent).touches[0].clientX : (activatorEvent as MouseEvent).clientX;
+      const clientY = isTouch ? (activatorEvent as TouchEvent).touches[0].clientY : (activatorEvent as MouseEvent).clientY;
+
+      const badgeWidth = 280;
+      
+      return {
+        ...transform,
+        // (clientX + transform.x) is current cursor position
+        // We want: BadgeRight = CursorX
+        // So: BadgeLeft = CursorX - badgeWidth
+        // TransformX = BadgeLeft - originalLeft
+        x: (clientX + transform.x - badgeWidth - 8) - activeNodeRect.left,
+        y: (clientY + transform.y - 20) - activeNodeRect.top,
+      };
+    }
+    return transform;
+  };
+
+  /**
+   * BULLETPROOF COLLISION
+   * Because the badge's top-left is snapped to the cursor, we just check
+   * what the cursor (or the badge's top-left mathematical point) is touching!
+   */
+  const customCollisionDetection: CollisionDetection = (args) => {
+    // 1. Direct pointer collision (most natural "hover" feel)
+    const collisions = pointerWithin(args);
+    const folderCollision = collisions.find(c => c.data?.type === 'folder');
+    if (folderCollision) return [folderCollision];
+
+    // 2. Fallback: Check if the mathematical top-left corner of the badge hits a folder
+    // (Helps if pointer is slightly off due to fast dragging or 1px gaps)
+    if (args.collisionRect) {
+      const topX = args.collisionRect.left;
+      const topY = args.collisionRect.top;
+
+      for (const container of args.droppableContainers) {
+        if (container.data.current?.type === 'folder' && container.rect.current) {
+          const r = container.rect.current;
+          if (topX >= r.left && topX <= r.right && topY >= r.top && topY <= r.bottom) {
+            return [container];
+          }
+        }
+      }
+    }
+
+    // 3. Final fallback
+    return rectIntersection(args);
+  }
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    setActiveId(active.id as string)
+
+    // Find the repo being dragged
+    const repo = data.repositories[active.id as string]
+    if (repo) {
+      setActiveRepo(repo)
+      setDraggedIds(active.data?.current?.selectedIds || [repo.id])
+    }
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
+    setActiveRepo(null)
+    setDraggedIds([])
+
+    if (over && over.data.current?.type === 'folder') {
+      const folderId = over.data.current.folderId
+      const repoId = active.id as string
+      const idsToMove = active.data?.current?.selectedIds || [repoId]
+
+      // Always clear selection when dropping onto a folder
+      clearSelection()
+
+      if (idsToMove.length > 1) {
+        bulkMoveReposToFolder(idsToMove, folderId)
+      } else {
+        const currentFolderId = data.repositories[repoId]?.folder_id || null
+        if (currentFolderId !== folderId) {
+          moveRepoToFolder(repoId, folderId)
+        }
+      }
+    }
+  }
 
   // Initialize local persistence (load from IndexedDB)
   useLocalPersistence()
@@ -80,7 +192,12 @@ function AppContent() {
   }
 
   return (
-    <>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={customCollisionDetection}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="flex h-screen overflow-hidden bg-[var(--color-bg)] flex-col">
         <Toaster position="bottom-right" theme={theme as 'light' | 'dark' | 'system'} richColors />
         {!isOnline && (
@@ -103,12 +220,10 @@ function AppContent() {
           </div>
         )}
 
-
-        {/* Global Rate Limit warning */}
-        {useStore.getState().rateLimitRemaining !== null && useStore.getState().rateLimitRemaining! <= 5 && (
+        {rateLimitRemaining !== null && rateLimitRemaining! <= 5 && (
           <div className="flex items-center justify-center gap-2 bg-[var(--color-warning)] text-[var(--color-bg)] px-4 py-1.5 text-xs font-medium z-50">
             <AlertTriangle className="h-3.5 w-3.5" />
-            <span>API Rate limit is nearly exhausted ({useStore.getState().rateLimitRemaining} remaining). Some features will be disabled.</span>
+            <span>API Rate limit is nearly exhausted ({rateLimitRemaining} remaining). Some features will be disabled.</span>
           </div>
         )}
         <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -119,9 +234,56 @@ function AppContent() {
             </ErrorBoundary>
           </main>
         </div>
+        <DragOverlay dropAnimation={null} modifiers={[snapTopLeftToCursor]}>
+          {activeId && activeRepo ? (
+            /* 
+               We use snapTopLeftToCursor to force the FIRST badge's top-left
+               to match the pointer position.
+            */
+            <div className="pointer-events-none flex flex-col gap-1.5 w-[280px]">
+              {draggedIds.slice(0, 5).map((id, index) => {
+                const r = data.repositories[id] || activeRepo
+                const opacity = 1 - index * 0.2
+                return (
+                  <div
+                    key={id}
+                    className="shadow-2xl border rounded-xl p-3 flex flex-col gap-1"
+                    style={{
+                      opacity: opacity,
+                      zIndex: 10 - index,
+                      backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                      borderColor: 'rgba(59, 130, 246, 0.5)',
+                      backdropFilter: 'blur(12px)',
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Circular Icon */}
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                        {r.type === 'profile' ? <User className="h-4 w-4" /> : <Book className="h-4 w-4" />}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[11px] text-blue-400 font-bold leading-none mb-1">
+                          {r.owner}
+                        </span>
+                        <span className="text-sm font-bold text-white leading-none truncate">
+                          {r.name}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {draggedIds.length > 5 && (
+                <div className="px-3 py-1 text-[10px] font-bold text-blue-400/60 uppercase tracking-widest text-center">
+                  + {draggedIds.length - 5} more items
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DragOverlay>
       </div>
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-    </>
+    </DndContext>
   )
 }
 

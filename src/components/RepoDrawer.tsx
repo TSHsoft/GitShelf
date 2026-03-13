@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { X, ExternalLink, Calendar, Star, Tag as TagIcon, BookOpen, Globe, Sun, Moon, Heart } from 'lucide-react'
+import { X, ExternalLink, Calendar, Star, Tag as TagIcon, BookOpen, Globe, Sun, Moon, Heart, Clock } from 'lucide-react'
 import { fetchReadme, formatStars, fetchProfileDetails, type ProfileDetails } from '@/lib/github'
 import { formatDate } from '@/lib/utils'
 import { useStore } from '@/store/useStore'
@@ -61,6 +61,7 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
         }
 
         loadReadme()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [repo?.owner, repo?.name, repo?.type, github_token]) // Do NOT include onClose or full repo object here so it doesn't refetch on tag/favorite update
 
     // 2. Escape Key Listener
@@ -219,7 +220,7 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
                                     </div>
                                     <div className="space-y-1">
                                         <div className="text-xs text-[var(--color-text-muted)] flex items-center gap-1">
-                                            <BookOpen className="h-3 w-3" /> Push
+                                            <Clock className="h-3 w-3" /> Push
                                         </div>
                                         <div className="text-sm font-medium text-[var(--color-text)]">{repo.last_push_at ? formatDate(repo.last_push_at) : '—'}</div>
                                     </div>

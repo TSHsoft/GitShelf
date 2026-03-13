@@ -42,46 +42,53 @@ export function TagEditModal({ repoId, initialTags, onClose }: TagEditModalProps
             }}
         >
             <div
-                className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-2xl flex flex-col max-h-[85vh]"
+                className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
                 onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
             >
-                {/* Header */}
-                <div className="mb-5 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <TagIcon className="h-4 w-4 text-[var(--color-text-muted)]" />
-                        <h2 className="text-base font-semibold text-[var(--color-text)]">Edit Tags</h2>
+                <button
+                    onClick={onClose}
+                    className="absolute right-4 top-4 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors p-1.5 rounded-lg hover:bg-[var(--color-surface-2)]"
+                >
+                    <X className="h-4 w-4" />
+                </button>
+
+                <div className="p-6">
+                    <div className="mb-6 flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-surface-2)] text-[var(--color-accent)] shadow-sm">
+                            <TagIcon className="h-6 w-6" />
+                        </div>
+                        <div className="min-w-0">
+                            <h2 className="text-base font-bold text-[var(--color-text)] leading-tight">Edit Tags</h2>
+                            <p className="text-xs text-[var(--color-text-muted)] mt-1 truncate">
+                                For {repo.owner}/{repo.name}
+                            </p>
+                        </div>
                     </div>
-                    <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] transition-colors">
-                        <X className="h-4 w-4" />
-                    </button>
-                </div>
 
-                <div className="mb-4 flex-1 overflow-y-auto min-h-[100px] pr-2">
-                    <p className="text-sm text-[var(--color-text-subtle)] mb-4">
-                        Manage tags for <span className="font-semibold text-[var(--color-text)]">{repo.owner}/{repo.name}</span>
-                    </p>
+                    <div className="mb-6 overflow-y-auto min-h-[120px] pr-1">
+                        <TagSelector
+                            selectedTagIds={selectedTagIds}
+                            onChange={setSelectedTagIds}
+                        />
+                    </div>
 
-                    <TagSelector
-                        selectedTagIds={selectedTagIds}
-                        onChange={setSelectedTagIds}
-                    />
-                </div>
-
-                <div className="flex gap-3">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="flex-1 rounded-lg border border-[var(--color-border)] py-2.5 text-sm font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-2)]"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleSave}
-                        className="flex-1 rounded-lg bg-[var(--color-accent)] py-2.5 text-sm font-semibold text-white transition-all hover:bg-[var(--color-accent-hover)] active:scale-[0.98]"
-                    >
-                        Save Tags
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 rounded-xl border border-[var(--color-border)] py-2 text-xs font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-2)]"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSave}
+                            className="flex-1 rounded-xl bg-[var(--color-accent)] py-2 text-xs font-semibold text-white transition-all hover:bg-[var(--color-accent-hover)] active:scale-[0.98] shadow-sm"
+                        >
+                            Save Tags
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>,

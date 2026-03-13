@@ -6,8 +6,15 @@ export const MAX_ITEMS_LIMIT = 10000;
 
 export const TagSchema = z.object({
     id: z.string(),
-    name: z.string().max(20),
+    name: z.string().max(25),
     color: z.string(),
+    sort_order: z.number().optional(),
+})
+
+export const FolderSchema = z.object({
+    id: z.string(),
+    name: z.string().max(25),
+    color: z.string().optional(),
     sort_order: z.number().optional(),
 })
 
@@ -42,6 +49,7 @@ export const RepositorySchema = z.object({
     last_synced_at: z.number().optional(), // Last time we synced this repo (independent of updated_at)
     // User-specific
     tags: z.array(z.string()),
+    folder_id: z.string().nullable().optional(),
     added_at: z.number(),
     languages: z.record(z.string(), z.number()).optional(),
 })
@@ -58,12 +66,14 @@ export const GitShelfDataSchema = z.object({
     last_sync_time: z.number().optional(),
     repositories: z.record(z.string(), RepositorySchema),
     tags: z.record(z.string(), TagSchema),
+    folders: z.record(z.string(), FolderSchema).default({}),
     settings: SettingsSchema,
 })
 
 // --- TypeScript Types ---
 
 export type Tag = z.infer<typeof TagSchema>
+export type Folder = z.infer<typeof FolderSchema>
 export type Repository = z.infer<typeof RepositorySchema>
 export type Settings = z.infer<typeof SettingsSchema>
 export type GitShelfData = z.infer<typeof GitShelfDataSchema>
@@ -82,6 +92,7 @@ export const DEFAULT_DATA: GitShelfData = {
     last_modified: Date.now(),
     repositories: {},
     tags: {},
+    folders: {},
     settings: {
         theme: 'dark',
         view_mode: 'card',

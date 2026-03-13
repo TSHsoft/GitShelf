@@ -2,18 +2,24 @@ import type { StateCreator } from 'zustand'
 import type { GitShelfStore, DataSlice } from '../types'
 import { DEFAULT_DATA } from '@/types'
 import type { Repository } from '@/types'
+import { useStore } from '../useStore'
 
 export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (set) => ({
     data: DEFAULT_DATA,
     isLoaded: false,
-    setData: (data) =>
+    setData: (data) => {
+        // Migration: Ensure folders exist for older backups
+        if (!data.folders) {
+            data.folders = {}
+        }
         set({
             data,
             isLoaded: true,
             viewMode: data.settings.view_mode ?? 'card',
             // Hydrate last sync time from persisted data
             lastSyncTime: data.last_sync_time ?? null,
-        }),
+        })
+    },
     addRepository: (repo) =>
         set((state) => ({
             data: {
@@ -137,12 +143,99 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
 
             repoIds.forEach((repoId) => {
                 const repo = state.data.repositories[repoId]
-                if (repo) {
-                    const newTags = Array.from(new Set([...repo.tags, ...tagIds]))
-                    if (newTags.length !== repo.tags.length) {
-                        updates[repoId] = { ...repo, tags: newTags }
-                        hasChanges = true
+                if (!repo) return
+
+                const newTags = new Set(repo.tags)
+                let added = false
+                tagIds.forEach(tId => {
+                    if (!newTags.has(tId)) {
+                        newTags.add(tId)
+                        added = true
                     }
+                })
+
+                if (added) {
+                    updates[repoId] = { ...repo, tags: Array.from(newTags) }
+                    hasChanges = true
+                }
+            })
+
+            if (!hasChanges) return {}
+
+            return {
+                data: {
+                    ...state.data,
+                    last_modified: Date.now(),
+                    repositories: { ...state.data.repositories, ...updates },
+                },
+            }
+        }),
+    addFolder: (folder) =>
+        set((state) => ({
+            data: {
+                ...state.data,
+                last_modified: Date.now(),
+                folders: { ...state.data.folders, [folder.id]: folder },
+            },
+        })),
+    removeFolder: (id) =>
+        set((state) => {
+            const { [id]: _folder, ...restFolders } = state.data.folders
+            let hasChanges = false
+            const nextRepos = { ...state.data.repositories }
+
+            // Move repos in the deleted folder back to Uncategorized (folder_id: null)
+            for (const [repoId, repo] of Object.entries(nextRepos)) {
+                if (repo.folder_id === id) {
+                    nextRepos[repoId] = {
+                        ...repo,
+                        folder_id: null
+                    }
+                    hasChanges = true
+                }
+            }
+
+            return {
+                data: { ...state.data, last_modified: Date.now(), folders: restFolders, repositories: hasChanges ? nextRepos : state.data.repositories },
+                // Reset selected folder if it was deleted, otherwise keep it
+                selectedFolderId: useStore.getState().selectedFolderId === id ? 'sys:all' : useStore.getState().selectedFolderId,
+            }
+        }),
+    updateFolder: (id, updates) =>
+        set((state) => ({
+            data: {
+                ...state.data,
+                last_modified: Date.now(),
+                folders: { ...state.data.folders, [id]: { ...state.data.folders[id], ...updates } },
+            },
+        })),
+    moveRepoToFolder: (repoId, folderId) =>
+        set((state) => {
+            const repo = state.data.repositories[repoId]
+            if (!repo) return state
+            if (repo.folder_id === folderId) return state
+
+            return {
+                data: {
+                    ...state.data,
+                    last_modified: Date.now(),
+                    repositories: {
+                        ...state.data.repositories,
+                        [repoId]: { ...repo, folder_id: folderId }
+                    }
+                }
+            }
+        }),
+    bulkMoveReposToFolder: (repoIds, folderId) =>
+        set((state) => {
+            const updates: Record<string, Repository> = {}
+            let hasChanges = false
+
+            repoIds.forEach((repoId) => {
+                const repo = state.data.repositories[repoId]
+                if (repo && repo.folder_id !== folderId) {
+                    updates[repoId] = { ...repo, folder_id: folderId }
+                    hasChanges = true
                 }
             })
 

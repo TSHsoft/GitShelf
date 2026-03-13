@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback } from 'react'
-import { BookMarked, Tag as TagIcon, Cloud, PanelLeft, PanelLeftClose, Loader2 } from 'lucide-react'
+import { BookMarked, Cloud, PanelLeft, PanelLeftClose, Loader2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { SettingsModal } from './SettingsModal'
 import { ManageTagDialog } from './ManageTagDialog'
 import { AvatarMenu } from './AvatarMenu'
+import { FolderList } from './FolderList'
 import { useSignOut } from '@/hooks/useSignOut'
 
 const COLLAPSED_KEY = 'gitshelf-sidebar-collapsed'
@@ -101,28 +102,8 @@ export function Sidebar() {
                 )}
 
                 {/* Nav */}
-                <nav className="flex flex-col gap-0.5 p-2 flex-1">
-                    {isCollapsed ? (
-                        <Tooltip label={useStore.getState().isSyncing ? "Tagging unavailable during sync" : "Manage Tags"}>
-                            <button
-                                onClick={() => setShowManageTags(true)}
-                                disabled={useStore.getState().isSyncing}
-                                className="flex w-full items-center justify-center rounded-lg p-2.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <TagIcon className="h-4 w-4 text-[var(--color-accent)]" />
-                            </button>
-                        </Tooltip>
-                    ) : (
-                        <button
-                            onClick={() => setShowManageTags(true)}
-                            disabled={useStore.getState().isSyncing}
-                            title={useStore.getState().isSyncing ? "Tagging unavailable during global sync" : "Manage Tags"}
-                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text)] bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <TagIcon className="h-4 w-4 text-[var(--color-accent)]" />
-                            Manage Tags
-                        </button>
-                    )}
+                <nav className="flex flex-col gap-0.5 p-2 flex-1 overflow-y-auto">
+                    <FolderList isCollapsed={isCollapsed} />
                 </nav>
 
                 {/* Footer: Sync Status + Avatar */}

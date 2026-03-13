@@ -32,10 +32,21 @@ export function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: n
     }) as T
 }
 
-export function generateTagColor(): string {
-    const colors = [
-        '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b',
-        '#10b981', '#06b6d4', '#f97316', '#84cc16',
-    ]
-    return colors[Math.floor(Math.random() * colors.length)]
+export const TAG_COLORS = [
+    '#ec4899', // Pink
+    '#ef4444', // Red
+    '#f97316', // Orange
+    '#eab308', // Yellow
+    '#84cc16', // Lime
+    '#22c55e', // Green
+    '#3b82f6', // Blue
+    '#6366f1', // Indigo
+    '#8b5cf6'  // Violet
+]
+
+export function generateTagColor(excludeColor?: string): string {
+    const availableColors = excludeColor 
+        ? TAG_COLORS.filter(c => c !== excludeColor)
+        : TAG_COLORS
+    return availableColors[Math.floor(Math.random() * availableColors.length)]
 }
