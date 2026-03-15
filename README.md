@@ -53,7 +53,7 @@ GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign i
 ### ☁️ Gist Backup & Restore
 - Auto-backup your shelf to a **private GitHub Gist** on an interval you choose (5–30 min)
 - **Manual backup** and **restore** from Gist with a single click
-- Encrypted token storage keeps your PAT safe in `localStorage`
+- Encrypted token storage keeps your GitHub access token safe in `localStorage`
 
 ### 📄 README Viewer
 - Click any repo to open a **drawer with the rendered README** — full GitHub-Flavored Markdown, images, and syntax highlighting

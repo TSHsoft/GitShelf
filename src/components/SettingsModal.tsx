@@ -218,7 +218,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                                             type="button"
                                             onClick={handleManualBackup}
                                             disabled={isBackingUp || gistSyncStatus === 'syncing' || !githubToken || useStore.getState().isSyncing}
-                                            title={!githubToken ? "GitHub token required" : useStore.getState().isSyncing ? "Backup unavailable during global sync" : "Backup to Gist"}
+                                            title={!githubToken ? "GitHub account connection required" : useStore.getState().isSyncing ? "Backup unavailable during global sync" : "Backup to Gist"}
                                             className="shrink-0 flex items-center justify-center gap-1.5 rounded-lg bg-[var(--color-accent)] px-3.5 py-1.5 text-xs font-semibold text-white transition-all hover:bg-[var(--color-accent-hover)] hover:shadow-lg hover:shadow-[var(--color-accent)]/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-[80px]"
                                         >
                                             Backup

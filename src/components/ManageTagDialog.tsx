@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, memo } from 'react'
+import { useState, useEffect, useRef, memo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Tag as TagIcon, Plus, X, Undo, Redo } from 'lucide-react'
+import { Tag as TagIcon, Plus, X, Undo, Redo, Check } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { generateTagColor, nanoid } from '@/lib/utils'
+import { generateTagColor, nanoid, TAG_COLORS } from '@/lib/utils'
 import type { Tag } from '@/types'
 
 import {
@@ -33,9 +33,11 @@ interface SortableTagProps {
     startEdit: (tag: Tag) => void
     handleDelete: (id: string, e: React.MouseEvent) => void
     setError: (err: string | null) => void
+    onColorDotClick: (tagId: string, anchorEl: HTMLButtonElement) => void
+    colorPickerTagId: string | null
 }
 
-const SortableTag = memo(function SortableTag({ tag, isEditing, editingName, setEditingName, commitEdit, cancelEdit, startEdit, handleDelete, setError }: SortableTagProps) {
+const SortableTag = memo(function SortableTag({ tag, isEditing, editingName, setEditingName, commitEdit, cancelEdit, startEdit, handleDelete, setError, onColorDotClick, colorPickerTagId }: SortableTagProps) {
     const {
         attributes,
         listeners,
@@ -89,9 +91,20 @@ const SortableTag = memo(function SortableTag({ tag, isEditing, editingName, set
                 </div>
             ) : (
                 <>
-                    {/* Left Spacer to balance the delete button on the right */}
-                    <div className="w-5 shrink-0" />
-                    <span className="truncate flex-1 text-center px-1 leading-normal">
+                    {/* Color dot — click to open swatch popover */}
+                    <button
+                        onPointerDown={e => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onColorDotClick(tag.id, e.currentTarget)
+                        }}
+                        className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all ring-offset-1 ring-offset-[var(--color-surface)] hover:ring-2 hover:ring-[var(--color-border)] ${
+                            colorPickerTagId === tag.id ? 'ring-2 ring-[var(--color-accent)]' : ''
+                        }`}
+                        style={{ backgroundColor: tag.color }}
+                        title="Change color"
+                    />
+                    <span className="truncate flex-1 text-center pl-2 pr-1 leading-normal">
                         {tag.name}
                     </span>
                     <button
@@ -129,6 +142,9 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editingName, setEditingName] = useState('')
     const [error, setError] = useState<string | null>(null)
+    const [colorPickerTagId, setColorPickerTagId] = useState<string | null>(null)
+    const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 })
+    const pickerRef = useRef<HTMLDivElement>(null)
 
     const addInputRef = useRef<HTMLInputElement>(null)
 
@@ -286,9 +302,45 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
         if (isAdding && addInputRef.current) addInputRef.current.focus()
     }, [isAdding])
 
+    // Close color picker when clicking outside it
+    useEffect(() => {
+        if (!colorPickerTagId) return
+        const handlePointerDown = (e: PointerEvent) => {
+            if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+                setColorPickerTagId(null)
+            }
+        }
+        document.addEventListener('pointerdown', handlePointerDown)
+        return () => document.removeEventListener('pointerdown', handlePointerDown)
+    }, [colorPickerTagId])
+
+    const handleColorDotClick = useCallback((tagId: string, anchorEl: HTMLButtonElement) => {
+        if (colorPickerTagId === tagId) {
+            setColorPickerTagId(null)
+            return
+        }
+        const rect = anchorEl.getBoundingClientRect()
+        // Position popover centered below the dot
+        setPickerPos({
+            top: rect.bottom + 6,
+            left: rect.left + rect.width / 2,
+        })
+        setColorPickerTagId(tagId)
+        setIsAdding(false)
+        setEditingId(null)
+        setError(null)
+    }, [colorPickerTagId])
+
+    const handleColorChange = useCallback((tagId: string, color: string) => {
+        const newTags = tags.map(t => t.id === tagId ? { ...t, color } : t)
+        pushHistory(newTags)
+        setColorPickerTagId(null)
+    }, [tags])
+
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
+                if (colorPickerTagId) { setColorPickerTagId(null); return }
                 if (isAdding) setIsAdding(false)
                 else if (editingId) setEditingId(null)
                 else onClose()
@@ -296,9 +348,9 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
         }
         window.addEventListener('keydown', handleEscape)
         return () => window.removeEventListener('keydown', handleEscape)
-    }, [isAdding, editingId, onClose])
+    }, [isAdding, editingId, colorPickerTagId, onClose])
 
-    return createPortal(
+    const mainPortal = createPortal(
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in"
             onPointerDown={(e) => {
@@ -363,7 +415,7 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
                     </div>
                 </div>
 
-                <div className="p-6 overflow-y-auto flex-1 bg-[var(--color-surface-2)]/30 min-h-[240px]" onClick={() => { setIsAdding(false); setEditingId(null); setError(null) }}>
+                <div className="p-6 overflow-y-auto flex-1 bg-[var(--color-surface-2)]/30 min-h-[240px]" onClick={() => { setIsAdding(false); setEditingId(null); setError(null); setColorPickerTagId(null) }}>
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -416,6 +468,8 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
                                         startEdit={startEdit}
                                         handleDelete={handleDelete}
                                         setError={setError}
+                                        onColorDotClick={handleColorDotClick}
+                                        colorPickerTagId={colorPickerTagId}
                                     />
                                 ))}
                             </div>
@@ -451,5 +505,49 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
             </div>
         </div>,
         document.body
+    )
+
+    const pickerTag = colorPickerTagId ? tags.find(t => t.id === colorPickerTagId) ?? null : null
+
+    return (
+        <>
+            {mainPortal}
+            {pickerTag && createPortal(
+                <div
+                    ref={pickerRef}
+                    className="fixed z-[200] animate-in fade-in zoom-in-90 duration-100"
+                    style={{
+                        top: Math.min(pickerPos.top, window.innerHeight - 130),
+                        left: Math.min(
+                            Math.max(pickerPos.left - 44, 8),
+                            window.innerWidth - 96
+                        ),
+                    }}
+                    onPointerDown={e => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
+                >
+                    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl p-2">
+                        <div className="grid grid-cols-3 gap-1.5">
+                            {TAG_COLORS.map(color => {
+                                const pt = pickerTag
+                                return (
+                                    <button
+                                        key={color}
+                                        onClick={() => handleColorChange(pt.id, color)}
+                                        className="relative w-5 h-5 rounded-full transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-[var(--color-surface)] focus:ring-[var(--color-accent)]"
+                                        style={{ backgroundColor: color }}
+                                    >
+                                        {pt.color === color && (
+                                            <Check className="absolute inset-0 m-auto h-3 w-3 text-white drop-shadow" />
+                                        )}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+        </>
     )
 }

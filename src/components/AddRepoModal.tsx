@@ -94,7 +94,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
             return
         }
         if (isRateLimited) {
-            setError('GitHub API rate limit reached. Please wait or add a token in Settings.')
+            setError('GitHub API rate limit reached. Please wait or sign in via Settings to increase your limit.')
             return
         }
 
@@ -111,7 +111,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
             if (msg.includes('404') || msg.includes('Not Found')) {
                 setError('Repository not found. Check the URL or make sure it\'s public.')
             } else if (msg.includes('rate limit') || msg.includes('403')) {
-                setError('GitHub API rate limit reached. Add a token in Settings or wait a few minutes.')
+                setError('GitHub API rate limit reached. Sign in via Settings to increase your limit or wait a few minutes.')
             } else {
                 setError(`Failed to fetch: ${msg}`)
             }
