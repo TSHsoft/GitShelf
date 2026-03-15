@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { X, ExternalLink, Calendar, Star, Tag as TagIcon, BookOpen, Globe, Sun, Moon, Heart, Clock } from 'lucide-react'
+import { X, ExternalLink, Calendar, Star, Tag as TagIcon, BookOpen, Globe, Sun, Moon, Heart, Clock, User, Book } from 'lucide-react'
 import { fetchReadme, formatStars, fetchProfileDetails, type ProfileDetails } from '@/lib/github'
 import { formatDate } from '@/lib/utils'
 import { useStore } from '@/store/useStore'
@@ -108,6 +108,11 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
                             <span>/</span>
                         </div>
                         <h2 className="text-xl font-bold text-[var(--color-text)] flex items-center gap-2">
+                            {repo.type === 'profile' ? (
+                                <User className="h-5 w-5 shrink-0 text-[var(--color-text-muted)]" />
+                            ) : (
+                                <Book className="h-5 w-5 shrink-0 text-[var(--color-text-muted)]" />
+                            )}
                             {repo.name}
                         </h2>
                     </div>

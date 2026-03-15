@@ -26,8 +26,8 @@ GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign i
 ## 🚀 Features
 
 ### 📚 Repo & Profile Management
-- **Add any GitHub repository** by URL or `owner/repo` shorthand
-- **GitHub Profile Bookmarking** — Add user profiles. GitShelf generates a **Profile Dashboard** showing:
+- **Add any GitHub repository or profile** by URL or shorthand (e.g., `owner/repo` or `owner`)
+- **Profile Bookmarking** — Add any GitHub user or organization to generate a visual **Profile Dashboard** showing:
     - User bio, social links, and status emojis
     - Followers/Following counts and location
     - Rendered "Special README" repository

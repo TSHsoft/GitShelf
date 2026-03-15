@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, GitBranch, Star, AlertCircle, Loader2 } from 'lucide-react'
+import { X, Book, Star, AlertCircle, Loader2, User, GitBranch, BookPlus } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { fetchRepository, formatStars } from '@/lib/github'
 import { decryptTokenAsync } from '@/lib/crypto'
@@ -151,7 +151,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
                     {/* Header */}
                     <div className="mb-6 flex items-center gap-4">
                         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-surface-2)] text-[var(--color-accent)] shadow-sm">
-                            <GitBranch className="h-6 w-6" />
+                            <BookPlus className="h-6 w-6" />
                         </div>
                         <div>
                             <h2 className="text-lg font-semibold text-[var(--color-text)] leading-tight">Add to Shelf</h2>
@@ -181,7 +181,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
                             </button>
                         </div>
                         <p className="text-[10px] text-[var(--color-text-subtle)] px-0.5 leading-relaxed">
-                            Supports <span className="font-semibold text-[var(--color-text-muted)]">owner/repo</span> format, full GitHub URLs, or a <span className="font-semibold text-[var(--color-text-muted)]">github.com/username</span> profile link.
+                            Supports <span className="font-semibold text-[var(--color-text-muted)]">owner/repo</span> format, full GitHub URLs, or any <span className="font-semibold text-[var(--color-text-muted)]">User or Organization</span> profile link.
                         </p>
                     </div>
 
@@ -199,7 +199,14 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
                             <div className="flex items-start justify-between gap-3 min-w-0">
                                 <div className="min-w-0 flex-1">
                                     <p className="text-[10px] text-[var(--color-accent)] font-bold uppercase tracking-wider mb-0.5 truncate">{preview.owner}</p>
-                                    <h3 className="text-base font-bold text-[var(--color-text)] leading-tight truncate">{preview.name}</h3>
+                                    <h3 className="text-base font-bold text-[var(--color-text)] leading-tight truncate flex items-center gap-2">
+                                        {preview.type === 'profile' ? (
+                                            <User className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+                                        ) : (
+                                            <Book className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+                                        )}
+                                        {preview.name}
+                                    </h3>
                                 </div>
                                 <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)] shrink-0 bg-[var(--color-surface)]/50 px-2 py-1 rounded-lg border border-[var(--color-border)]/50">
                                     <span className="flex items-center gap-1.5"><Star className="h-3.5 w-3.5" />{formatStars(preview.stars)}</span>
