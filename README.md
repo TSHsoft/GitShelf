@@ -177,55 +177,12 @@ You can deploy the GitShelf frontend to any static hosting provider. Here is how
 3.  **Deploy**: Vercel will automatically build and deploy your app.
 4.  **Note**: If you update your environment variables later, you must **Redeploy** the latest deployment in the Vercel dashboard for the changes to take effect.
 
----
-
-## 📁 Project Structure
-
-```
-GitShelf/
-├── gitshelf-app/              # React application
-│   ├── src/
-│   │   ├── components/        # UI components (RepoList, RepoCard, Sidebar, …)
-│   │   │   └── repo-drawer/   # Repo detail drawer & README viewer
-│   │   ├── hooks/             # Custom hooks (useGistSync, useSyncRepos, …)
-│   │   ├── lib/               # GitHub API client, crypto utilities
-│   │   ├── store/             # Zustand global store
-│   │   ├── types/             # Zod schemas + TypeScript types
-│   │   └── main.tsx
-│   ├── public/
-│   └── vite.config.ts
-├── LICENSE
-└── README.md
-```
-
----
-
-
-
-- [x] GitHub OAuth sign-in
-- [x] Add repos by URL / shorthand
-- [x] Card, Table, and Grouped views
-- [x] Custom tagging & **Workspaces (Folders)**
-- [x] **Favorites (♥)** for priority access
-- [x] **Drag & Drop organization**
-- [x] **Profile Dashboards**
-- [x] Advanced filtering (Type, Status, Tag, Language, Stars, Recency)
-- [x] Repo sync with status detection (`renamed`, `archived`, …)
-- [x] **Offline-First with IndexedDB**
-- [x] GitHub Gist auto-backup & restore
-- [x] In-app README viewer
-- [x] Bulk actions (Tag, Move, Delete)
-- [x] Import & Export (JSON)
-- [x] Light / Dark theme
-- [x] Mobile-responsive layout
-- [ ] Keyboard shortcuts for power users
-- [ ] Shareable shelf links (read-only public view)
-- [ ] Browser extension for one-click bookmarking
-- [ ] Release changelog tracking per repo
 
 ---
 
 ## 🤝 Contributing
+
+
 
 Contributions are welcome! Here's how to get started:
 
