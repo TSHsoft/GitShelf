@@ -97,7 +97,7 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
             ref={setNodeRef}
             {...attributes}
             {...listeners}
-            className={`group flex flex-col border-b border-[var(--color-border)]/50 px-4 py-3 text-sm transition-colors cursor-pointer relative ${isDragging ? 'opacity-50' : ''} ${selected ? 'bg-[var(--color-accent)]/5 hover:bg-[var(--color-accent)]/10' : 'hover:bg-[var(--color-surface-2)]'}`}
+            className={`group flex flex-col border-b border-[var(--color-border)]/50 px-4 py-3 text-sm transition-colors relative ${isDragging ? 'opacity-50' : ''} ${selected ? 'bg-[var(--color-accent)]/5 hover:bg-[var(--color-accent)]/10' : 'hover:bg-[var(--color-surface-2)]'}`}
         >
             {/* Main Columns Row */}
             <div className="flex items-center w-full">
@@ -171,17 +171,17 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                 </div>
 
                 {/* Release */}
-                <div className="w-24 text-[var(--color-text-muted)] text-xs font-mono flex items-center shrink-0" title={repo.latest_release || ''}>
-                    <span className="truncate">{repo.latest_release ?? '—'}</span>
+                <div className="w-24 pr-2 text-[var(--color-text-muted)] text-xs font-mono flex items-center shrink-0" title={repo.latest_release || ''}>
+                    <span className="truncate min-w-0">{repo.latest_release ?? '—'}</span>
                     {repo.has_new_release && (
-                        <span className="text-[9px] font-bold text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-1 py-0.5 rounded uppercase tracking-wider shrink-0">
+                        <span className="ml-1 text-[9px] font-bold text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-1 py-0.5 rounded uppercase tracking-wider shrink-0">
                             New
                         </span>
                     )}
                 </div>
 
                 {/* Actions (stop propagation to avoid drawer opening) */}
-                <div className="w-24 flex items-center justify-end shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="w-[112px] flex items-center justify-end shrink-0" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center">
                         <button
                             onClick={onClick}
@@ -264,7 +264,7 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                                         className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
                                     >
                                         <Trash2 className="h-3.5 w-3.5" />
-                                        Remove item
+                                        Delete repo
                                     </button>
                                 </PortalMenu>
                             )}
@@ -290,10 +290,10 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
             {showDeleteConfirm && (
                 <ConfirmDialog
                     isOpen={showDeleteConfirm}
-                    title="Remove Item"
-                    description={<>Are you sure you want to remove <strong>{repo.owner}/{repo.name}</strong>? This action cannot be undone.</>}
+                    title="Delete Repo"
+                    description={<>Are you sure you want to delete <strong>{repo.owner}/{repo.name}</strong>?<br/><br/>This action cannot be undone.</>}
                     variant="danger"
-                    confirmLabel="Remove"
+                    confirmLabel="Delete"
                     onConfirm={() => removeRepository(repo.id)}
                     onClose={() => setShowDeleteConfirm(false)}
                 />
@@ -436,7 +436,7 @@ export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableVi
                         <SortIcon field={'latest_release'} />
                     </button>
 
-                    <div className="w-24" /> {/* Actions spacer */}
+                    <div className="w-[112px]" /> {/* Actions spacer */}
                 </div>
 
                 {/* Rows */}

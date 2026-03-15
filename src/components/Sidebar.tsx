@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { BookMarked, Cloud, PanelLeft, PanelLeftClose, Loader2 } from 'lucide-react'
+import { BookMarked, Cloud, PanelLeft, PanelLeftClose, Loader2, ChevronUp } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { SettingsModal } from './SettingsModal'
 import { ManageTagDialog } from './ManageTagDialog'
@@ -66,7 +66,7 @@ export function Sidebar() {
                         <button
                             onClick={toggleCollapse}
                             title="Open sidebar"
-                            className="relative flex items-center justify-center w-9 h-9 rounded-lg cursor-ew-resize"
+                            className="relative flex items-center justify-center w-9 h-9 rounded-lg"
                         >
                             {/* Default: GitShelf logo */}
                             <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-150 group-hover/hdr:opacity-0">
@@ -93,7 +93,7 @@ export function Sidebar() {
                             <button
                                 onClick={toggleCollapse}
                                 title="Close sidebar"
-                                className="flex items-center justify-center rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] transition-colors cursor-ew-resize shrink-0"
+                                className="flex items-center justify-center rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] transition-colors shrink-0"
                             >
                                 <PanelLeftClose className="h-4 w-4" />
                             </button>
@@ -141,7 +141,7 @@ export function Sidebar() {
                         <button
                             ref={avatarBtnRef}
                             onClick={() => setShowAvatarMenu(v => !v)}
-                            className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-[var(--color-surface-2)] transition-colors cursor-pointer"
+                            className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-[var(--color-surface-2)] transition-colors cursor-pointer"
                         >
                             {userProfile?.avatarUrl ? (
                                 <img src={userProfile.avatarUrl} alt="Avatar" className="w-7 h-7 rounded-full border border-[var(--color-border)] shrink-0" />
@@ -155,10 +155,10 @@ export function Sidebar() {
                                     {userProfile?.name || userProfile?.login || 'GitHub User'}
                                 </span>
                                 {userProfile?.login && (
-                                    <span className="text-[10px] text-[var(--color-text-muted)] truncate">@{userProfile.login}</span>
+                                    <span className="text-[10px] text-[var(--color-text-muted)] group-hover:text-[var(--color-text-subtle)] truncate transition-colors">@{userProfile.login}</span>
                                 )}
                             </div>
-                            <PanelLeft className="h-3.5 w-3.5 text-[var(--color-text-muted)] -rotate-90 shrink-0" />
+                            <ChevronUp className={`h-3.5 w-3.5 text-[var(--color-text-muted)] group-hover:text-[var(--color-text)] shrink-0 transition-all duration-200 ${showAvatarMenu ? 'rotate-180' : ''}`} />
                         </button>
                     )}
                 </div>

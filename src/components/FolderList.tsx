@@ -4,6 +4,8 @@ import { useStore } from '@/store/useStore'
 import { FolderEditModal } from './FolderEditModal'
 import { ConfirmDialog } from './ConfirmDialog'
 import { useDroppable } from '@dnd-kit/core'
+import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 function DroppableFolder({
     id,
@@ -14,7 +16,8 @@ function DroppableFolder({
     onEdit,
     onDelete,
     isCollapsed,
-    count
+    count,
+    isSortable
 }: {
     id: string
     name: string
@@ -25,8 +28,9 @@ function DroppableFolder({
     onDelete?: () => void
     isCollapsed: boolean
     count?: number
+    isSortable?: boolean
 }) {
-    const { isOver, setNodeRef } = useDroppable({
+    const { isOver, setNodeRef: setDroppableRef } = useDroppable({
         id: `folder-${id}`,
         data: {
             type: 'folder',
@@ -35,14 +39,43 @@ function DroppableFolder({
         }
     })
 
+    const {
+        attributes,
+        listeners,
+        setNodeRef: setSortableRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({
+        id: `sort-folder-${id}`,
+        disabled: !isSortable,
+        data: {
+            type: 'folder-item',
+            folderId: id
+        }
+    })
+
     const [showMenu, setShowMenu] = useState(false)
 
-    // Cannot drop into "All Repos"
-    const isDroppable = id !== 'sys:all'
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 20 : (showMenu ? 50 : 1),
+    }
+
+    // Merge refs
+    const setNodeRef = (node: HTMLElement | null) => {
+        setDroppableRef(node)
+        if (isSortable) setSortableRef(node)
+    }
 
     return (
         <div
-            ref={isDroppable ? setNodeRef : undefined}
+            ref={setNodeRef}
+            style={isSortable ? style : undefined}
+            {...(isSortable ? attributes : {})}
+            {...(isSortable ? listeners : {})}
             onClick={onClick}
             className={`group relative flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${isSelected
                 ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
@@ -165,21 +198,27 @@ export function FolderList({ isCollapsed }: { isCollapsed: boolean }) {
                 />
 
                 {!isCollapsed && folders.length > 0 && <div className="my-1 h-px bg-[var(--color-border)] mx-2" />}
-
-                {folders.map(folder => (
-                    <DroppableFolder
-                        key={folder.id}
-                        id={folder.id}
-                        name={folder.name}
-                        color={folder.color}
-                        isSelected={selectedFolderId === folder.id}
-                        onClick={() => setSelectedFolderId(folder.id)}
-                        onEdit={() => handleEdit(folder.id)}
-                        onDelete={() => handleDelete(folder.id)}
-                        isCollapsed={isCollapsed}
-                        count={allRepos.filter(r => r.folder_id === folder.id).length}
-                    />
-                ))}
+                
+                <SortableContext 
+                    items={folders.map(f => `sort-folder-${f.id}`)}
+                    strategy={verticalListSortingStrategy}
+                >
+                    {folders.map(folder => (
+                        <DroppableFolder
+                            key={folder.id}
+                            id={folder.id}
+                            name={folder.name}
+                            color={folder.color}
+                            isSelected={selectedFolderId === folder.id}
+                            onClick={() => setSelectedFolderId(folder.id)}
+                            onEdit={() => handleEdit(folder.id)}
+                            onDelete={() => handleDelete(folder.id)}
+                            isCollapsed={isCollapsed}
+                            isSortable={true}
+                            count={allRepos.filter(r => r.folder_id === folder.id).length}
+                        />
+                    ))}
+                </SortableContext>
             </div>
 
             {isCollapsed && (
@@ -208,7 +247,7 @@ export function FolderList({ isCollapsed }: { isCollapsed: boolean }) {
                 <ConfirmDialog
                     isOpen={!!deletingFolderId}
                     title="Delete Folder"
-                    description={<>Are you sure you want to delete folder <strong>{data.folders[deletingFolderId]?.name}</strong>? Repositories in this folder will be moved to <strong>Uncategorized</strong>. This action cannot be undone.</>}
+                    description={<>Are you sure you want to delete folder <strong>{data.folders[deletingFolderId]?.name}</strong>? Repositories in this folder will be moved to <strong>Uncategorized</strong>.<br/><br/>This action cannot be undone.</>}
                     variant="danger"
                     confirmLabel="Delete"
                     onConfirm={confirmDelete}

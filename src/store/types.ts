@@ -44,7 +44,9 @@ export interface UISlice {
     filterLanguage: string | null
     filterStars: string | null
     filterUpdated: string | null
-    filterTag: string | null
+    filterTag: string | null  // sidebar tag click — single
+    filterTags: string[]       // filter bar — multi-select
+    searchTopics: string[]     // topics tokens from the search box
     filterType: 'repository' | 'profile' | null
     filterFavorite: boolean
     selectedRepoIds: Set<string>
@@ -55,6 +57,8 @@ export interface UISlice {
     setFilterStars: (stars: string | null) => void
     setFilterUpdated: (updated: string | null) => void
     setFilterTag: (tag: string | null) => void
+    setFilterTags: (tags: string[]) => void
+    setSearchTopics: (topics: string[]) => void
     setFilterType: (type: 'repository' | 'profile' | null) => void
     setFilterFavorite: (favorite: boolean) => void
     setSearchQuery: (q: string) => void

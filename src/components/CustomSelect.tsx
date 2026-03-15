@@ -7,6 +7,7 @@ export interface SelectOption {
     label: string
     color?: string
     icon?: React.ReactNode
+    isSelected?: boolean  // External override for multi-select scenarios
 }
 
 interface CustomSelectProps {
@@ -19,6 +20,7 @@ interface CustomSelectProps {
     className?: string
     clearable?: boolean
     disabled?: boolean
+    multiple?: boolean   // When true, keeps dropdown open and uses option.isSelected for check marks
 }
 
 export function CustomSelect({
@@ -30,7 +32,8 @@ export function CustomSelect({
     clearable = true,
     icon,
     className = '',
-    disabled = false
+    disabled = false,
+    multiple = false,
 }: CustomSelectProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [search, setSearch] = useState('')
@@ -153,9 +156,9 @@ export function CustomSelect({
                     {/* Options List */}
                     <div className="max-h-[200px] overflow-y-auto p-1">
                         {/* Clear Option */}
-                        {clearable && value && (
+                        {clearable && (value || (multiple && options.some(o => o.isSelected))) && (
                             <button
-                                onClick={() => { onChange(null); setIsOpen(false); setSearch(''); }}
+                                onClick={() => { onChange(null); if (!multiple) { setIsOpen(false); setSearch(''); } }}
                                 className="flex w-full items-center gap-2 px-2 py-1.5 rounded-md text-xs text-[var(--color-text-subtle)] hover:bg-[var(--color-danger)]/10 hover:text-[var(--color-danger)] transition-colors mb-1"
                             >
                                 <X className="h-3.5 w-3.5" />
@@ -165,11 +168,15 @@ export function CustomSelect({
 
                         {filteredOptions.length > 0 ? (
                             filteredOptions.map(option => {
-                                const isSelected = option.value === value
+                            const isSelected = option.isSelected !== undefined ? option.isSelected : option.value === value
                                 return (
                                     <button
                                         key={option.value}
-                                        onClick={() => { onChange(option.value); setIsOpen(false); setSearch(''); }}
+                                        onClick={() => {
+                                    onChange(option.value)
+                                    // In multiple mode, keep the dropdown open
+                                    if (!multiple) { setIsOpen(false); setSearch(''); }
+                                }}
                                         className={`
                                             flex w-full items-center justify-between px-2 py-1.5 rounded-md text-xs transition-colors
                                             ${isSelected

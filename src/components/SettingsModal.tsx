@@ -340,7 +340,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                     <ConfirmDialog
                         isOpen={showRestoreConfirm}
                         title="Restore Database"
-                        description={<>Are you sure you want to restore the database from Gist? This will <strong>overwrite</strong> your current local data and settings. This action cannot be undone.</>}
+                        description={<>Are you sure you want to restore the database from Gist? This will <strong>overwrite</strong> your current local data and settings.<br/><br/>This action cannot be undone.</>}
                         variant="warning"
                         confirmLabel={isRestoring ? "Restoring..." : "Restore"}
                         onConfirm={handleRestoreGist}

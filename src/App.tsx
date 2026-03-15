@@ -3,7 +3,7 @@ import { useStore } from '@/store/useStore'
 import { Sidebar } from '@/components/Sidebar'
 import { RepoList } from '@/components/RepoList'
 import { useEffect } from 'react'
-import { AlertTriangle, Settings, WifiOff, User, Book } from 'lucide-react'
+import { AlertTriangle, Settings, WifiOff, User, Book, Folder as FolderIcon } from 'lucide-react'
 import { SettingsModal } from '@/components/SettingsModal'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { useState } from 'react'
@@ -15,6 +15,7 @@ import { AuthCallback } from '@/components/AuthCallback'
 import { fetchAuthenticatedUserProfile } from '@/lib/github'
 import { decryptTokenAsync } from '@/lib/crypto'
 import { DndContext, DragOverlay, pointerWithin, rectIntersection, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
 import type { CollisionDetection, Modifier } from '@dnd-kit/core'
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
 
@@ -30,6 +31,7 @@ function AppContent() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [activeRepo, setActiveRepo] = useState<Repository | null>(null)
   const [draggedIds, setDraggedIds] = useState<string[]>([])
+  const [activeFolder, setActiveFolder] = useState<{ id: string, name: string, color?: string } | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -70,6 +72,19 @@ function AppContent() {
    * what the cursor (or the badge's top-left mathematical point) is touching!
    */
   const customCollisionDetection: CollisionDetection = (args) => {
+    // If we are dragging a folder, prioritize sortable folder-item collisions
+    if (args.active.data.current?.type === 'folder-item') {
+      const collisions = pointerWithin(args);
+      const sortableCollision = collisions.find(c => String(c.id).startsWith('sort-folder-'));
+      if (sortableCollision) return [sortableCollision];
+      
+      const rectCollisions = rectIntersection(args);
+      const sortableRectCollision = rectCollisions.find(c => String(c.id).startsWith('sort-folder-'));
+      if (sortableRectCollision) return [sortableRectCollision];
+
+      return [];
+    }
+
     // 1. Direct pointer collision (most natural "hover" feel)
     const collisions = pointerWithin(args);
     const folderCollision = collisions.find(c => c.data?.type === 'folder');
@@ -99,6 +114,13 @@ function AppContent() {
     const { active } = event
     setActiveId(active.id as string)
 
+    if (active.data.current?.type === 'folder-item') {
+      const folderId = active.data.current.folderId
+      const folder = data.folders[folderId]
+      if (folder) setActiveFolder({ id: folder.id, name: folder.name, color: folder.color })
+      return
+    }
+
     // Find the repo being dragged
     const repo = data.repositories[active.id as string]
     if (repo) {
@@ -112,8 +134,9 @@ function AppContent() {
     setActiveId(null)
     setActiveRepo(null)
     setDraggedIds([])
+    setActiveFolder(null)
 
-    if (over && over.data.current?.type === 'folder') {
+    if (over && over.data.current?.type === 'folder' && active.data.current?.type !== 'folder-item') {
       const folderId = over.data.current.folderId
       const repoId = active.id as string
       const idsToMove = active.data?.current?.selectedIds || [repoId]
@@ -127,6 +150,38 @@ function AppContent() {
         const currentFolderId = data.repositories[repoId]?.folder_id || null
         if (currentFolderId !== folderId) {
           moveRepoToFolder(repoId, folderId)
+        }
+      }
+    }
+
+    // --- Folder Reordering ---
+    if (over && active.data.current?.type === 'folder-item' && over.data.current?.type === 'folder-item') {
+      if (active.id !== over.id) {
+        const folders = Object.values(data.folders || {}).sort((a, b) => {
+          if (a.sort_order !== undefined && b.sort_order !== undefined) return a.sort_order - b.sort_order
+          return a.name.localeCompare(b.name)
+        })
+
+        // id comes from sort-folder-${folder.id}
+        const activeFolderId = String(active.id).replace('sort-folder-', '')
+        const overFolderId = String(over.id).replace('sort-folder-', '')
+
+        const oldIndex = folders.findIndex(f => f.id === activeFolderId)
+        const newIndex = folders.findIndex(f => f.id === overFolderId)
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const newFoldersArr = arrayMove(folders, oldIndex, newIndex)
+          const newFoldersObj = { ...data.folders }
+          newFoldersArr.forEach((f, idx) => {
+            newFoldersObj[f.id] = { ...f, sort_order: idx + 1 }
+          })
+
+          const store = useStore.getState()
+          store.setData({
+            ...data,
+            last_modified: Date.now(),
+            folders: newFoldersObj
+          })
         }
       }
     }
@@ -234,7 +289,7 @@ function AppContent() {
             </ErrorBoundary>
           </main>
         </div>
-        <DragOverlay dropAnimation={null} modifiers={[snapTopLeftToCursor]}>
+        <DragOverlay dropAnimation={null} modifiers={activeFolder ? [] : [snapTopLeftToCursor]}>
           {activeId && activeRepo ? (
             /* 
                We use snapTopLeftToCursor to force the FIRST badge's top-left
@@ -278,6 +333,21 @@ function AppContent() {
                   + {draggedIds.length - 5} more items
                 </div>
               )}
+            </div>
+          ) : activeId && activeFolder ? (
+            <div className="pointer-events-none shadow-2xl w-[220px]">
+              <div
+                className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium bg-[var(--color-surface-2)] text-[var(--color-text)] border border-[var(--color-accent)] opacity-90`}
+                style={{ backdropFilter: 'blur(12px)' }}
+              >
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <FolderIcon
+                          className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]"
+                          style={activeFolder.color ? { color: activeFolder.color } : undefined}
+                      />
+                      <span className="truncate">{activeFolder.name}</span>
+                  </div>
+              </div>
             </div>
           ) : null}
         </DragOverlay>

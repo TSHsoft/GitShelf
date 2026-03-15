@@ -104,14 +104,14 @@ export function ConfirmDialog({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-muted)] transition-colors"
+                            className="flex items-center justify-center min-w-[80px] px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-muted)] transition-colors"
                         >
                             {cancelLabel}
                         </button>
                         <button
                             type="button"
                             onClick={() => { onConfirm(); onClose() }}
-                            className={`px-3 py-2 rounded-lg text-xs font-medium border shadow-sm transition-all active:scale-[0.98] ${getConfirmButtonStyle()}`}
+                            className={`flex items-center justify-center min-w-[80px] px-3 py-2 rounded-lg text-xs font-medium border shadow-sm transition-all active:scale-[0.98] ${getConfirmButtonStyle()}`}
                         >
                             {confirmLabel}
                         </button>

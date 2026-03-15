@@ -50,7 +50,7 @@ export function RepoCard({ repo, isActive, onClick, selected, selectedIds }: Rep
             ref={setNodeRef}
             {...attributes}
             {...listeners}
-            className={`group relative flex flex-col gap-2.5 rounded-xl border p-4 transition-all duration-150 ${(!githubToken) ? 'cursor-default' : 'cursor-pointer'} ${isActive
+            className={`group relative flex flex-col gap-2.5 rounded-xl border p-4 transition-all duration-150 ${isActive
                 ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-lg shadow-blue-500/5'
                 : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-text-muted)]/40 hover:bg-[var(--color-surface-2)]'
                 } ${repo.status === 'deleted' ? 'opacity-60' : ''} ${isDragging ? 'opacity-50' : ''}`}
@@ -143,7 +143,7 @@ export function RepoCard({ repo, isActive, onClick, selected, selectedIds }: Rep
                                     className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
                                 >
                                     <Trash2 className="h-3.5 w-3.5" />
-                                    Remove item
+                                    Delete repo
                                 </button>
                             </PortalMenu>
                         )}
@@ -202,10 +202,10 @@ export function RepoCard({ repo, isActive, onClick, selected, selectedIds }: Rep
             {showDeleteConfirm && (
                 <ConfirmDialog
                     isOpen={showDeleteConfirm}
-                    title="Remove Item"
-                    description={<>Are you sure you want to remove <strong>{repo.owner}/{repo.name}</strong>? This action cannot be undone.</>}
+                    title="Delete Repo"
+                    description={<>Are you sure you want to delete <strong>{repo.owner}/{repo.name}</strong>?<br/><br/>This action cannot be undone.</>}
                     variant="danger"
-                    confirmLabel="Remove"
+                    confirmLabel="Delete"
                     onConfirm={() => removeRepository(repo.id)}
                     onClose={() => setShowDeleteConfirm(false)}
                 />

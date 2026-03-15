@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Search, Plus, Trash2, X, Heart, FolderInput } from 'lucide-react'
+import { Plus, Trash2, X, Heart, FolderInput } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { AddRepoModal } from './AddRepoModal'
 import { ViewSwitcher } from './ViewSwitcher'
@@ -8,11 +8,12 @@ import { FolderSelectDialog } from './FolderSelectDialog'
 import { TableView } from './views/TableView'
 import { CardView } from './views/CardView'
 import { GroupedView } from './views/GroupedView'
+import { TokenizedSearch } from './TokenizedSearch'
 import type { Repository } from '@/types'
 
 /** Compute the sorted flat list of repos (shared across all views) */
 function useSortedRepos(): Repository[] {
-    const { data, searchQuery, selectedTagId, selectedFolderId, sortField, sortDir, filterLanguage, filterStars, filterUpdated, filterTag, filterType, filterFavorite } = useStore()
+    const { data, searchQuery, searchTopics, selectedTagId, selectedFolderId, sortField, sortDir, filterLanguage, filterStars, filterUpdated, filterTag, filterTags, filterType, filterFavorite } = useStore()
 
     return useMemo(() => {
         let list = Object.values(data.repositories)
@@ -26,22 +27,12 @@ function useSortedRepos(): Repository[] {
             list = list.filter((r) => r.folder_id === selectedFolderId)
         }
 
-        // Filter by tag
+        // Filter by single tag (sidebar click)
         if (selectedTagId) {
             list = list.filter((r) => r.tags.includes(selectedTagId))
         }
 
-        // Filter by type
-        if (filterType) {
-            list = list.filter((r) => r.type === filterType)
-        }
-
-        // Filter by favorite
-        if (filterFavorite) {
-            list = list.filter((r) => r.is_favorite)
-        }
-
-        // Filter by search
+        // Filter by search query (plain text)
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase()
             list = list.filter(
@@ -50,6 +41,15 @@ function useSortedRepos(): Repository[] {
                     (r.owner || '').toLowerCase().includes(q) ||
                     (r.description ?? '').toLowerCase().includes(q) ||
                     (r.language ?? '').toLowerCase().includes(q)
+            )
+        }
+
+        // Filter by @topic tokens (all must match)
+        if (searchTopics.length > 0) {
+            list = list.filter((r) =>
+                searchTopics.every(topic =>
+                    (r.topics ?? []).some(t => t.toLowerCase() === topic.toLowerCase())
+                )
             )
         }
 
@@ -75,11 +75,9 @@ function useSortedRepos(): Repository[] {
             const oneDay = 24 * 60 * 60 * 1000
             list = list.filter(r => {
                 const lastPush = r.last_push_at ? new Date(r.last_push_at).getTime() : 0
-                // Active filters: updated within X days
                 if (filterUpdated === 'week') return (now - lastPush) < (7 * oneDay)
                 if (filterUpdated === 'month') return (now - lastPush) < (30 * oneDay)
                 if (filterUpdated === 'year') return (now - lastPush) < (365 * oneDay)
-                // Stale filters: NOT updated for X days
                 if (filterUpdated === 'stale_1m') return (now - lastPush) > (30 * oneDay)
                 if (filterUpdated === 'stale_3m') return (now - lastPush) > (90 * oneDay)
                 if (filterUpdated === 'stale_6m') return (now - lastPush) > (180 * oneDay)
@@ -88,15 +86,29 @@ function useSortedRepos(): Repository[] {
             })
         }
 
-
-
+        // Single tag from filter bar (legacy — kept for safety, replaced by filterTags)
         if (filterTag) {
             list = list.filter(r => r.tags.includes(filterTag))
+        }
+
+        // Multi-select tags from filter bar (all selected tags must be present)
+        if (filterTags.length > 0) {
+            list = list.filter(r => filterTags.every(id => r.tags.includes(id)))
         }
 
 
 
 
+
+        // Filter by type
+        if (filterType) {
+            list = list.filter((r) => r.type === filterType)
+        }
+
+        // Filter by favorite
+        if (filterFavorite) {
+            list = list.filter((r) => r.is_favorite)
+        }
 
         // Sort logic
         return [...list].sort((a, b) => {
@@ -126,7 +138,7 @@ function useSortedRepos(): Repository[] {
             const cmp = av < bv ? -1 : av > bv ? 1 : 0
             return sortDir === 'asc' ? cmp : -cmp
         })
-    }, [data.repositories, searchQuery, selectedTagId, selectedFolderId, sortField, sortDir, filterLanguage, filterStars, filterUpdated, filterTag, filterType, filterFavorite])
+    }, [data.repositories, searchQuery, searchTopics, selectedTagId, selectedFolderId, sortField, sortDir, filterLanguage, filterStars, filterUpdated, filterTag, filterTags, filterType, filterFavorite])
 }
 
 import { ConfirmDialog } from './ConfirmDialog'
@@ -134,7 +146,7 @@ import { CustomSelect } from './CustomSelect'
 import { BulkTagDialog } from './BulkTagDialog'
 
 export function RepoList() {
-    const { viewMode, groupBy, searchQuery, statusFilter, setStatusFilter, removeRepository, data, filterTag, setFilterTag, filterLanguage, setFilterLanguage, filterStars, setFilterStars, filterUpdated, setFilterUpdated, filterType, setFilterType, filterFavorite, setFilterFavorite, githubToken, selectedFolderId, selectedRepoIds, setSelectedRepoIds, toggleRepoSelection, clearSelection } = useStore()
+    const { viewMode, groupBy, searchQuery, searchTopics, setSearchTopics, statusFilter, setStatusFilter, removeRepository, data, filterTag, filterTags, setFilterTags, filterLanguage, setFilterLanguage, filterStars, setFilterStars, filterUpdated, setFilterUpdated, filterType, setFilterType, filterFavorite, setFilterFavorite, githubToken, selectedFolderId, selectedRepoIds, setSelectedRepoIds, toggleRepoSelection, clearSelection } = useStore()
     const [showAddModal, setShowAddModal] = useState(false)
     const [showBulkTagDialog, setShowBulkTagDialog] = useState(false)
     const [showFolderSelectDialog, setShowFolderSelectDialog] = useState(false)
@@ -143,7 +155,7 @@ export function RepoList() {
     const [confirmAction, setConfirmAction] = useState<{
         isOpen: boolean
         title: string
-        description: string
+        description: React.ReactNode
         variant: 'danger' | 'warning' | 'default'
         onConfirm: () => void
     }>({
@@ -190,8 +202,8 @@ export function RepoList() {
     const handleBulkDelete = () => {
         setConfirmAction({
             isOpen: true,
-            title: 'Delete Repositories',
-            description: `Are you sure you want to delete ${selectedRepoIds.size} repositories? This action cannot be undone.`,
+            title: 'Delete Repos',
+            description: <>Are you sure you want to delete {selectedRepoIds.size} repos?<br/><br/>This action cannot be undone.</>,
             variant: 'danger',
             onConfirm: () => {
                 selectedRepoIds.forEach(id => removeRepository(id))
@@ -263,25 +275,13 @@ export function RepoList() {
                             <span className="text-[var(--color-text-muted)]">/</span>
                         </div>
 
-                        {/* Search & Standard Tools */}
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)]" />
-                            <input
-                                value={searchQuery}
-                                onChange={(e) => useStore.getState().setSearchQuery(e.target.value)}
-                                placeholder="Search repos..."
-                                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] pl-9 pr-9 h-[30px] text-xs font-semibold text-[var(--color-text)] outline-none focus:border-[var(--color-accent)] transition-colors"
-                            />
-                            {searchQuery.length > 0 && (
-                                <button
-                                    onClick={() => useStore.getState().setSearchQuery('')}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-full transition-colors"
-                                    title="Clear search"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </button>
-                            )}
-                        </div>
+                        {/* Tokenized Search */}
+                        <TokenizedSearch
+                            value={searchQuery}
+                            topics={searchTopics}
+                            onSearchChange={(text) => useStore.getState().setSearchQuery(text)}
+                            onTopicsChange={(topics) => setSearchTopics(topics)}
+                        />
                         <SyncButton />
                         <ViewSwitcher />
                         <button
@@ -353,20 +353,34 @@ export function RepoList() {
 
 
 
-                    {/* Tags Filter */}
+                    {/* Tags Filter — multi-select */}
                     <div className="h-4 w-px bg-[var(--color-border)]" />
 
                     <div className="flex items-center gap-1.5 min-w-[150px]">
                         <CustomSelect
-                            value={filterTag}
-                            onChange={(val) => setFilterTag(val)}
+                            value={filterTags.length === 1 ? filterTags[0] : null}
+                            onChange={(val) => {
+                                if (!val) {
+                                    setFilterTags([])
+                                } else {
+                                    // Toggle the tag in the selection
+                                    setFilterTags(
+                                        filterTags.includes(val)
+                                            ? filterTags.filter(t => t !== val)
+                                            : [...filterTags, val]
+                                    )
+                                }
+                            }}
                             options={Object.values(data.tags).map(t => ({
                                 value: t.id,
                                 label: t.name,
-                                color: t.color
+                                color: t.color,
+                                // Mark selected tags visually
+                                isSelected: filterTags.includes(t.id),
                             }))}
-                            placeholder="Tag: Any"
+                            placeholder={filterTags.length > 1 ? `${filterTags.length} Tags` : 'Tag: Any'}
                             searchable={true}
+                            multiple={true}
                             className="w-full"
                         />
                     </div>
@@ -431,13 +445,13 @@ export function RepoList() {
                     </div>
 
                     {/* Clear Button */}
-                    {(filterLanguage || filterStars || filterUpdated || filterTag || statusFilter !== 'all' || filterType || filterFavorite) && (
+                    {(filterLanguage || filterStars || filterUpdated || filterTags.length > 0 || filterTag || statusFilter !== 'all' || filterType || filterFavorite) && (
                         <button
                             onClick={() => {
                                 setFilterLanguage(null)
                                 setFilterStars(null)
                                 setFilterUpdated(null)
-                                setFilterTag(null)
+                                setFilterTags([])
                                 setFilterType(null)
                                 setFilterFavorite(false)
                                 setStatusFilter('all')

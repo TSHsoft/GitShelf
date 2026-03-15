@@ -57,6 +57,26 @@
   box-sizing: border-box;
 }
 
+button:focus,
+[role="button"]:focus,
+[tabindex]:focus {
+  outline: none;
+}
+
+button:not(.cursor-ew-resize), 
+select:not(.cursor-ew-resize), 
+[role="button"]:not(.cursor-ew-resize), 
+[role="menuitem"]:not(.cursor-ew-resize), 
+[role="tab"]:not(.cursor-ew-resize), 
+[role="option"]:not(.cursor-ew-resize) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  cursor: default;
+}
+
 html,
 body,
 #root {

@@ -61,7 +61,7 @@ export function TagEditModal({ repoId, initialTags, onClose }: TagEditModalProps
                         <div className="min-w-0">
                             <h2 className="text-base font-bold text-[var(--color-text)] leading-tight">Edit Tags</h2>
                             <p className="text-xs text-[var(--color-text-muted)] mt-1 truncate">
-                                For {repo.owner}/{repo.name}
+                                {repo.owner}/{repo.name}
                             </p>
                         </div>
                     </div>

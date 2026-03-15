@@ -146,7 +146,7 @@ function MenuItem({
             onClick={() => !disabled && onClick()}
             disabled={disabled}
             title={title}
-            className={`flex w-full items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+            className={`group flex w-full items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors
                 ${disabled
                     ? 'opacity-50 cursor-not-allowed text-[var(--color-text-muted)]'
                     : danger
@@ -155,7 +155,7 @@ function MenuItem({
                 }
             `}
         >
-            <span className={disabled ? 'text-[var(--color-text-muted)]' : (danger ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]')}>{icon}</span>
+            <span className={disabled ? 'text-[var(--color-text-muted)]' : (danger ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text)] transition-colors')}>{icon}</span>
             {label}
         </button>
     )

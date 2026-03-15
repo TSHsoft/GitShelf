@@ -19,27 +19,35 @@
 
 ## ✨ What is GitShelf?
 
-GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign in with your GitHub account, add any public or private repo you care about, tag and filter them, and keep your collection in sync — all stored privately in your own GitHub Gist as JSON. No server. No database. No tracking.
+GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign in with your GitHub account, add any public repo you care about, tag and filter them, and keep your collection in sync — all stored privately in your own GitHub Gist as JSON. No server. No database. No tracking.
 
 ---
 
 ## 🚀 Features
 
-### 📚 Repo Management
+### 📚 Repo & Profile Management
 - **Add any GitHub repository** by URL or `owner/repo` shorthand
+- **GitHub Profile Bookmarking** — Add user profiles. GitShelf generates a **Profile Dashboard** showing:
+    - User bio, social links, and status emojis
+    - Followers/Following counts and location
+    - Rendered "Special README" repository
+    - Pinned and Popular repositories with star/fork metrics
+- **Folders & Workspaces** — Organize your shelf into custom, color-coded folders
+- **Drag & Drop Organization** — Easily move items into folders by dragging them from the list to the sidebar
+- **Smart Favorites (♥)** — Pin important projects for quick access; favorites are always pinned to the top of any view
 - **Three view modes** — Card, Table, and Grouped views
-- **Full-text search** across name, owner, description, and language
-- **GitHub profile bookmarking** — add a GitHub user profile as a shelf item
+- **Tokenized Search** — Full-text search across name, owner, description, and language, plus support for `@topic` mentions to instantly filter by GitHub topics
+- **Bulk actions** — Tag, Move, or Delete multiple items at once from the toolbar
 
 ### 🏷️ Tagging & Filtering
-- Create color-coded **custom tags** and assign multiple tags per repo
-- **Filter bar** — filter by tag, language, star count, and last-push recency
-- **Status filtering** — All / Active / Stale / Archived
-- **Bulk-tag** multiple repos at once from the toolbar
+- Create color-coded **custom tags** and assign multiple tags per repo, with **multi-select filtering** to find exactly what you need.
+- **Advanced Filter Bar** — filter by Type (Repo/Profile), Favorites, Status, Tag, Language, Stars, and Recency
+- **Status tracking** — Automatically detects `active`, `archived`, `renamed`, `stale`, or `not_found`
+- **Language breakdown** — Visual distribution bar for repository languages
 
-### 🔄 Sync & Status Tracking
+### 🔄 Sync & Offline Support
 - **One-click sync** to refresh metadata (stars, description, language, latest release) for all bookmarked repos
-- Automatic status detection: `active`, `archived`, `renamed`, `deleted`, `stale`, `not_found`
+- **Offline-First** — All data is persisted to **IndexedDB**, allowing you to browse and manage your shelf without an internet connection. Changes sync to Gist once you're back online.
 - GitHub **API rate-limit badge** displayed in Settings so you always know your quota
 
 ### ☁️ Gist Backup & Restore
@@ -55,8 +63,9 @@ GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign i
 - Export your entire shelf as a JSON file for offline backup
 - Import from a JSON backup or from a browser bookmarks export
 
-### 🌗 Themes
-- **Light / Dark / System** theme with full CSS custom-property theming
+### 🌗 Themes & UI
+- **Interface** — Responsive user interface
+- **Themes** — Light and Dark theme support
 
 ---
 
@@ -196,19 +205,23 @@ GitShelf/
 - [x] GitHub OAuth sign-in
 - [x] Add repos by URL / shorthand
 - [x] Card, Table, and Grouped views
-- [x] Custom tagging with color labels
-- [x] Advanced filtering (language, stars, recency, status)
-- [x] Repo sync with status detection (`renamed`, `archived`, `deleted`, …)
+- [x] Custom tagging & **Workspaces (Folders)**
+- [x] **Favorites (♥)** for priority access
+- [x] **Drag & Drop organization**
+- [x] **Profile Dashboards**
+- [x] Advanced filtering (Type, Status, Tag, Language, Stars, Recency)
+- [x] Repo sync with status detection (`renamed`, `archived`, …)
+- [x] **Offline-First with IndexedDB**
 - [x] GitHub Gist auto-backup & restore
 - [x] In-app README viewer
-- [x] Bulk-tag / bulk-delete actions
+- [x] Bulk actions (Tag, Move, Delete)
 - [x] Import & Export (JSON)
-- [x] Light / Dark / System theme
+- [x] Light / Dark theme
+- [x] Mobile-responsive layout
 - [ ] Keyboard shortcuts for power users
 - [ ] Shareable shelf links (read-only public view)
 - [ ] Browser extension for one-click bookmarking
 - [ ] Release changelog tracking per repo
-- [ ] Mobile-responsive layout
 
 ---
 
