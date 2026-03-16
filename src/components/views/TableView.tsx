@@ -66,7 +66,7 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
     onToggle: () => void;
     githubToken: string | null;
 }) {
-    const { data, removeRepository, syncRepository, toggleFavorite, syncingRepoIds, syncErrors, isOnline } = useStore()
+    const { data, removeRepository, syncRepository, toggleFavorite, syncingRepoIds, syncErrors, isOnline, markAsViewed } = useStore()
 
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: repo.id,
@@ -222,7 +222,17 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                             <Heart className={`h-3.5 w-3.5 ${repo.is_favorite ? 'fill-current' : ''}`} />
                         </button>
 
-                        <a href={repo.url} target="_blank" rel="noopener noreferrer" className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]" title="Open in GitHub">
+                        <a
+                            href={repo.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                markAsViewed(repo.id);
+                            }}
+                            className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                            title="Open in GitHub"
+                        >
                             <ExternalLink className="h-3.5 w-3.5" />
                         </a>
 
@@ -325,7 +335,7 @@ interface TableViewProps {
 }
 
 export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableViewProps) {
-    const { sortField, sortDir, setSortField, setSortDir, markAsViewed, githubToken, activeRepoId, setActiveRepoId } = useStore()
+    const { sortField, sortDir, setSortField, setSortDir, githubToken, activeRepoId, setActiveRepoId } = useStore()
     const parentRef = useRef<HTMLDivElement>(null)
 
 
@@ -350,7 +360,6 @@ export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableVi
 
     const handleRowClick = (repoId: string) => {
         if (!githubToken) return
-        markAsViewed(repoId)
         setActiveRepoId(repoId)
     }
 

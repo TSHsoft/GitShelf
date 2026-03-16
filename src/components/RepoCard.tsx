@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import { Star, ExternalLink, Trash2, Tag as TagIcon, Archive, GitBranch, AlertTriangle, RefreshCw, Heart, FolderInput, MoreHorizontal, BookOpen, User, Book } from 'lucide-react'
 import type { Repository } from '@/types'
 import { useStore } from '@/store/useStore'
@@ -19,8 +19,8 @@ interface RepoCardProps {
     selectedIds?: string[]
 }
 
-export function RepoCard({ repo, isActive, onClick, selected, selectedIds }: RepoCardProps) {
-    const { data, removeRepository, syncRepository, toggleFavorite, syncingRepoIds, githubToken } = useStore()
+export const RepoCard = React.memo(function RepoCard({ repo, isActive, onClick, selected, selectedIds }: RepoCardProps) {
+    const { data, removeRepository, syncRepository, toggleFavorite, syncingRepoIds, githubToken, markAsViewed } = useStore()
     const tags = repo.tags.map((id) => data.tags[id]).filter(Boolean)
 
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -38,6 +38,7 @@ export function RepoCard({ repo, isActive, onClick, selected, selectedIds }: Rep
     const [showMenu, setShowMenu] = useState(false)
     const [showTagEditor, setShowTagEditor] = useState(false)
     const isSyncing = syncingRepoIds.includes(repo.id)
+    const isUnread = repo.last_push_at && (!repo.last_viewed_at || new Date(repo.last_push_at).getTime() > repo.last_viewed_at)
 
     const statusBadge = repo.status === 'deleted'
         ? <span className="flex items-center gap-1 text-xs text-[var(--color-danger)]"><AlertTriangle className="h-3 w-3" />Deleted</span>
@@ -98,7 +99,10 @@ export function RepoCard({ repo, isActive, onClick, selected, selectedIds }: Rep
                         href={repo.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            markAsViewed(repo.id);
+                        }}
                         className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
                         title="Open in GitHub"
                     >
@@ -196,7 +200,10 @@ export function RepoCard({ repo, isActive, onClick, selected, selectedIds }: Rep
                         <span>{repo.latest_release}</span>
                     </div>
                 )}
-                <span className="ml-auto" title="Last Push">{formatDate(repo.last_push_at || repo.added_at)}</span>
+                <div className="ml-auto flex items-center gap-1.5" title="Last Push">
+                    {isUnread && <div className="h-2 w-2 rounded-full bg-[var(--color-danger)] animate-pulse" />}
+                    <span>{formatDate(repo.last_push_at || repo.added_at)}</span>
+                </div>
             </div>
 
             {showDeleteConfirm && (
@@ -227,4 +234,4 @@ export function RepoCard({ repo, isActive, onClick, selected, selectedIds }: Rep
             )}
         </div>
     )
-}
+})

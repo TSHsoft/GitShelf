@@ -36,7 +36,8 @@ function DroppableFolder({
             type: 'folder',
             folderId: id === 'sys:all' || id === 'sys:uncategorized' ? null : id,
             isSystem: id === 'sys:all' || id === 'sys:uncategorized'
-        }
+        },
+        disabled: id === 'sys:all'
     })
 
     const {
@@ -77,11 +78,11 @@ function DroppableFolder({
             {...(isSortable ? attributes : {})}
             {...(isSortable ? listeners : {})}
             onClick={onClick}
-            className={`group relative flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${isSelected
-                ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
+            className={`group relative flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer border ${isSelected
+                ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-transparent'
                 : isOver
-                    ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-dashed border-[var(--color-accent)]'
-                    : 'text-[var(--color-text)] hover:bg-[var(--color-surface-2)]'
+                    ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border-dashed border-[var(--color-accent)]'
+                    : 'text-[var(--color-text)] hover:bg-[var(--color-surface-2)] border-transparent'
                 }`}
             onMouseLeave={() => setShowMenu(false)}
         >

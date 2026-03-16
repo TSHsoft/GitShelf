@@ -21,6 +21,7 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
     const toggleDrawerTheme = useStore(state => state.toggleDrawerTheme)
     const toggleFavorite = useStore(state => state.toggleFavorite)
     const github_token = useStore(state => state.githubToken)
+    const markAsViewed = useStore(state => state.markAsViewed)
 
     // Use useShallow for array mapping to prevent re-renders when other tags change
     const tags = useStore(useShallow(state =>
@@ -129,6 +130,7 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
                             href={repo.type === 'profile' ? repo.url : `${repo.url}#readme`}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={() => markAsViewed(repo.id)}
                             title="Open on GitHub"
                             className="p-2 rounded-lg hover:bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
                         >

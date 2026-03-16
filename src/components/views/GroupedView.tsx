@@ -155,10 +155,9 @@ interface GroupedViewProps {
 }
 
 export function GroupedView({ repos, viewMode, groupBy, selectedIds, onToggle }: GroupedViewProps) {
-    const { tags, githubToken, markAsViewed, activeRepoId, setActiveRepoId } = useStore(useShallow(state => ({
+    const { tags, githubToken, activeRepoId, setActiveRepoId } = useStore(useShallow(state => ({
         tags: state.data.tags,
         githubToken: state.githubToken,
-        markAsViewed: state.markAsViewed,
         activeRepoId: state.activeRepoId,
         setActiveRepoId: state.setActiveRepoId
     })))
@@ -173,7 +172,6 @@ export function GroupedView({ repos, viewMode, groupBy, selectedIds, onToggle }:
 
     const handleRowClick = (repoId: string) => {
         if (!githubToken) return
-        markAsViewed(repoId)
         setActiveRepoId(repoId)
     }
 

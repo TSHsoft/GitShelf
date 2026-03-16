@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Trash2, X, Heart, FolderInput, BookPlus, Plus } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { AddRepoModal } from './AddRepoModal'
@@ -145,7 +145,7 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { CustomSelect } from './CustomSelect'
 import { BulkTagDialog } from './BulkTagDialog'
 
-export function RepoList() {
+export const RepoList = React.memo(function RepoList() {
     const { viewMode, groupBy, searchQuery, searchTopics, setSearchTopics, statusFilter, setStatusFilter, removeRepository, data, filterTag, filterTags, setFilterTags, filterLanguage, setFilterLanguage, filterStars, setFilterStars, filterUpdated, setFilterUpdated, filterType, setFilterType, filterFavorite, setFilterFavorite, githubToken, selectedFolderId, selectedRepoIds, setSelectedRepoIds, toggleRepoSelection, clearSelection } = useStore()
     const [showAddModal, setShowAddModal] = useState(false)
     const [showBulkTagDialog, setShowBulkTagDialog] = useState(false)
@@ -537,4 +537,4 @@ export function RepoList() {
             )}
         </div>
     )
-}
+})

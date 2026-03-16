@@ -1,3 +1,4 @@
+import React, { useMemo, useCallback } from 'react'
 import type { Repository } from '@/types'
 import { useStore } from '@/store/useStore'
 import { RepoCard } from '@/components/RepoCard'
@@ -8,8 +9,9 @@ interface CardViewProps {
     selectedIds: Set<string> | null
 }
 
-export function CardView({ repos, selectedIds }: CardViewProps) {
+export const CardView = React.memo(function CardView({ repos, selectedIds }: CardViewProps) {
     const { activeRepoId, setActiveRepoId } = useStore()
+    const selectedIdsArray = useMemo(() => selectedIds ? Array.from(selectedIds) : [], [selectedIds])
 
     return (
         <div className="h-full overflow-y-auto p-4">
@@ -19,7 +21,7 @@ export function CardView({ repos, selectedIds }: CardViewProps) {
                         key={repo.id}
                         repo={repo}
                         selected={selectedIds?.has(repo.id) ?? false}
-                        selectedIds={selectedIds ? Array.from(selectedIds) : []}
+                        selectedIds={selectedIdsArray}
                     />
                 ))}
             </div>
@@ -33,24 +35,26 @@ export function CardView({ repos, selectedIds }: CardViewProps) {
             )}
         </div>
     )
-}
-
-export function SortableCard({ repo, selected, selectedIds }: {
+})
+ 
+export const SortableCard = React.memo(function SortableCard({ repo, selected, selectedIds }: {
     repo: Repository,
     selected?: boolean,
     selectedIds?: string[]
 }) {
     const { activeRepoId, setActiveRepoId, githubToken } = useStore()
+
+    const handleClick = useCallback(() => {
+        if (!githubToken) return
+        setActiveRepoId(activeRepoId === repo.id ? null : repo.id)
+    }, [activeRepoId, githubToken, repo.id, setActiveRepoId])
     return (
         <RepoCard
             repo={repo}
             isActive={activeRepoId === repo.id}
             selected={selected}
             selectedIds={selectedIds}
-            onClick={() => {
-                if (!githubToken) return
-                setActiveRepoId(activeRepoId === repo.id ? null : repo.id)
-            }}
+            onClick={handleClick}
         />
     )
-}
+})

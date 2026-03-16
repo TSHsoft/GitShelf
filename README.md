@@ -34,6 +34,8 @@ GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign i
     - Pinned and Popular repositories with star/fork metrics
 - **Folders & Workspaces** — Organize your shelf into custom, color-coded folders
 - **Drag & Drop Organization** — Easily move items into folders by dragging them from the list to the sidebar
+- **Smart Update Indicators** — Blinking visual indicators (🔴) appear when a project has new commits since your last GitHub visit
+- **Star & Release Tracking** — Monitor star growth trends (↑/↓) and stay updated with automatically detected latest releases
 - **Smart Favorites (♥)** — Pin important projects for quick access; favorites are always pinned to the top of any view
 - **Three view modes** — Card, Table, and Grouped views
 - **Tokenized Search** — Full-text search across name, owner, description, and language, plus support for `@topic` mentions to instantly filter by GitHub topics
