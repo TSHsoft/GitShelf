@@ -68,7 +68,25 @@ export function ProfileDashboard({
             <div className="w-full lg:w-[296px] shrink-0 flex flex-col gap-4 text-[var(--color-text)]">
                 {/* Avatar */}
                 <div className="relative w-full max-w-[296px] mx-auto lg:mx-0 pr-[40px] pb-[20px]">
-                    <img src={profileDetails.avatarUrl} alt={profileDetails.name || profileDetails.login} className="w-full max-w-[256px] aspect-square rounded-full border border-[var(--color-border)] shadow-sm object-cover" />
+                    <div className="w-full max-w-[256px] aspect-square rounded-full border border-[var(--color-border)] shadow-sm overflow-hidden bg-[var(--color-surface-2)] flex items-center justify-center">
+                        <img 
+                            src={profileDetails.avatarUrl} 
+                            alt={profileDetails.name || profileDetails.login} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                const parent = e.currentTarget.parentElement;
+                                if (parent) {
+                                    const fallback = document.createElement('div');
+                                    fallback.className = 'flex items-center justify-center w-full h-full text-[var(--color-text-muted)]';
+                                    fallback.innerHTML = profileDetails.type === 'Organization' 
+                                        ? '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-building-2"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>'
+                                        : '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+                                    parent.appendChild(fallback);
+                                }
+                            }}
+                        />
+                    </div>
                     {profileDetails.status && profileDetails.status.emojiHTML && DOMPurify.sanitize(profileDetails.status.emojiHTML) && (
                         <div className="absolute bottom-[28px] left-[180px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full px-3 py-1.5 flex items-center text-sm shadow-sm hover:translate-x-1 transition-all duration-300 cursor-pointer group overflow-hidden w-fit max-w-[40px] hover:max-w-[200px] z-10">
                             <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(profileDetails.status.emojiHTML, { ALLOWED_TAGS: ['g-emoji', 'img', 'span'], ALLOWED_ATTR: ['class', 'src', 'alt', 'fallback-src', 'alias'] }) }} className="shrink-0" />

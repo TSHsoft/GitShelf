@@ -918,21 +918,57 @@ query($username: String!) {
 }
 `
     try {
-        let response: any;
+        interface GraphQLProfileRepo {
+            id: string;
+            name: string;
+            description: string | null;
+            stargazerCount: number;
+            forkCount: number;
+            primaryLanguage?: { name: string; color: string };
+            isMirror: boolean;
+            isArchived: boolean;
+        }
+
+        interface GraphQLProfileResponse {
+            repositoryOwner: {
+                __typename: 'User' | 'Organization';
+                avatarUrl: string;
+                name: string | null;
+                login: string;
+                bio: string | null;
+                description: string | null;
+                company: string | null;
+                location: string | null;
+                email: string | null;
+                websiteUrl: string | null;
+                twitterUsername: string | null;
+                pronouns: string | null;
+                status: { emojiHTML: string | null, message: string | null } | null;
+                socialAccounts: { nodes: { provider: string; url: string }[] };
+                createdAt: string;
+                followers: { totalCount: number };
+                following: { totalCount: number };
+                repositories: { totalCount: number; nodes: GraphQLProfileRepo[] };
+                pinnedItems: { nodes: GraphQLProfileRepo[] };
+            }
+        }
+
+        let response: GraphQLProfileResponse | null = null;
         try {
             response = await octokit.graphql(query, { username })
-        } catch (err: any) {
-            if (err.data) {
-                response = err.data
+        } catch (err: unknown) {
+            const error = err as { data?: GraphQLProfileResponse }
+            if (error.data) {
+                response = error.data
             } else {
                 throw err
             }
         }
+        if (!response) return null
         const owner = response.repositoryOwner
         if (!owner) return null
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mapRepo = (r: any): ProfileRepo => ({
+        const mapRepo = (r: GraphQLProfileRepo): ProfileRepo => ({
             id: r.id,
             name: r.name,
             description: r.description,

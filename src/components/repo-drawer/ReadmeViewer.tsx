@@ -2,7 +2,7 @@ import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, Loader2 } from 'lucide-react'
 import React, { memo } from 'react'
 
 interface ReadmeViewerProps {
@@ -89,14 +89,48 @@ export const ReadmeViewer = memo(function ReadmeViewer({
                                 if (src && baseUrls && !src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('#')) {
                                     src = `${baseUrls.rawBase}${src.replace(/^\.\//, '')}`;
                                 }
+
                                 return (
-                                    <img
-                                        className="max-w-full h-auto inline-block align-middle rounded-md border border-[var(--color-border)] opacity-0 transition-opacity duration-300"
-                                        loading="lazy"
-                                        onLoad={(e) => e.currentTarget.classList.remove('opacity-0')}
-                                        {...props}
-                                        src={src}
-                                    />
+                                    <span className="relative inline-block my-2 max-w-full group/readme-img min-h-[40px] min-w-[40px]">
+                                        {/* Loading Spinner - Uses a data attribute to keep track of state locally */}
+                                        <span 
+                                            className="absolute inset-0 flex items-center justify-center bg-[var(--color-surface-2)]/50 rounded-md transition-opacity duration-300 pointer-events-none"
+                                            id={`spinner-${src}`}
+                                        >
+                                            <Loader2 className="h-5 w-5 animate-spin text-[var(--color-text-muted)]" />
+                                        </span>
+                                        
+                                        <img
+                                            className="max-w-full h-auto inline-block align-middle rounded-md border border-[var(--color-border)] opacity-0 transition-opacity duration-500"
+                                            loading="lazy"
+                                            decoding="async"
+                                            onLoad={(e) => {
+                                                e.currentTarget.classList.remove('opacity-0');
+                                                const spinner = document.getElementById(`spinner-${src}`);
+                                                if (spinner) spinner.style.opacity = '0';
+                                            }}
+                                            onError={(e) => {
+                                                const target = e.currentTarget;
+                                                const retryCount = parseInt(target.getAttribute('data-retry') || '0');
+                                                
+                                                if (retryCount < 2) {
+                                                    // Simple retry logic: append a timestamp to bust any cache/stalls
+                                                    setTimeout(() => {
+                                                        target.setAttribute('data-retry', (retryCount + 1).toString());
+                                                        const originalSrc = src || '';
+                                                        const separator = originalSrc.includes('?') ? '&' : '?';
+                                                        target.src = `${originalSrc}${separator}retry=${retryCount + 1}`;
+                                                    }, 1000); // Wait 1s before retrying
+                                                } else {
+                                                    target.style.display = 'none';
+                                                    const spinner = document.getElementById(`spinner-${src}`);
+                                                    if (spinner) spinner.style.display = 'none';
+                                                }
+                                            }}
+                                            {...props}
+                                            src={src}
+                                        />
+                                    </span>
                                 );
                             },
                             a: ({ node: _node, ...props }) => {

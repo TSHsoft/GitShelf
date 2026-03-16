@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo, useCallback } from 'react'
+import { useState, useEffect, useRef, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { Tag as TagIcon, Plus, X, Undo, Redo, Check } from 'lucide-react'
 import { useStore } from '@/store/useStore'
@@ -314,7 +314,7 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
         return () => document.removeEventListener('pointerdown', handlePointerDown)
     }, [colorPickerTagId])
 
-    const handleColorDotClick = useCallback((tagId: string, anchorEl: HTMLButtonElement) => {
+    const handleColorDotClick = (tagId: string, anchorEl: HTMLButtonElement) => {
         if (colorPickerTagId === tagId) {
             setColorPickerTagId(null)
             return
@@ -329,13 +329,13 @@ export function ManageTagDialog({ onClose }: ManageTagDialogProps) {
         setIsAdding(false)
         setEditingId(null)
         setError(null)
-    }, [colorPickerTagId])
+    }
 
-    const handleColorChange = useCallback((tagId: string, color: string) => {
+    const handleColorChange = (tagId: string, color: string) => {
         const newTags = tags.map(t => t.id === tagId ? { ...t, color } : t)
         pushHistory(newTags)
         setColorPickerTagId(null)
-    }, [tags])
+    }
 
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
