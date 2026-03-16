@@ -92,7 +92,7 @@ export function PortalMenu({
                 zIndex: 9999,
                 pointerEvents: 'auto'
             }}
-            className={`min-w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-2xl ${className}`}
+            className={`min-w-32 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-2xl ${className}`}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
         >

@@ -318,11 +318,11 @@ function AppContent() {
                             r.profile_type === 'org' ? <Building2 className="h-4 w-4" /> : <User className="h-4 w-4" />
                         ) : <Book className="h-4 w-4" />}
                       </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-[11px] text-blue-400 font-bold leading-none mb-1">
+                      <div className="flex flex-col min-w-0 py-0.5">
+                        <span className="text-[11px] text-blue-400 font-bold mb-1 truncate">
                           {r.owner}
                         </span>
-                        <span className="text-sm font-bold text-white leading-none truncate">
+                        <span className="text-sm font-bold text-white truncate">
                           {r.name}
                         </span>
                       </div>

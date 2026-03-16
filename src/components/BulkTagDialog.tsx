@@ -98,7 +98,7 @@ export function BulkTagDialog({ repoIds, onClose }: BulkTagDialogProps) {
                                             flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all
                                             ${isSelected
                                                 ? 'border-[var(--color-accent)] shadow-sm'
-                                                : 'border-transparent bg-[var(--color-surface-2)] text-[var(--color-text-subtle)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-text)]'
+                                                : 'border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-subtle)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-text)] hover:border-[var(--color-text-muted)]'
                                             }
                                         `}
                                         style={isSelected ? {
@@ -128,11 +128,11 @@ export function BulkTagDialog({ repoIds, onClose }: BulkTagDialogProps) {
                     ) : (
                         <div />
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 h-[34px]">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface)] transition-colors"
+                            className="h-full px-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface)] transition-colors"
                         >
                             Cancel
                         </button>
@@ -140,7 +140,7 @@ export function BulkTagDialog({ repoIds, onClose }: BulkTagDialogProps) {
                             type="button"
                             onClick={handleSave}
                             disabled={selectedTagIds.size === 0}
-                            className="px-4 py-2 rounded-xl bg-[var(--color-accent)] text-white text-xs font-semibold hover:bg-[var(--color-accent-hover)] border-transparent shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="h-full px-4 rounded-lg bg-[var(--color-accent)] text-white text-xs font-semibold hover:bg-[var(--color-accent-hover)] border-transparent shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Add Tags
                         </button>

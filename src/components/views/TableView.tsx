@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Trash2, Tag as TagIcon, Archive, AlertTriangle, RefreshCw, Star, Heart, MoreHorizontal, FolderInput, BookOpen, User, Building2, Book } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Trash2, Tag as TagIcon, Archive, AlertTriangle, RefreshCw, Star, Heart, MoreHorizontal, FolderInput, BookOpen, User, Building2, Book, Users } from 'lucide-react'
 import type { Repository, SortField, RepoStatus } from '@/types'
 import { useStore } from '@/store/useStore'
 import { formatStars } from '@/lib/github'
@@ -145,8 +145,8 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                 {/* Stars & Diff */}
                 <div className="w-24 text-[var(--color-text-muted)] font-mono text-xs flex items-center shrink-0" title={repo.type === 'profile' ? "Followers" : "Stars"}>
                     <div className="flex items-center gap-1">
-                        <Star className="h-3 w-3 text-[var(--color-warning)]" />
-                        {formatStars(repo.stars)} {repo.type === 'profile' && 'Followers'}
+                        {repo.type === 'profile' ? <Users className="h-3 w-3 text-[var(--color-warning)]" /> : <Star className="h-3 w-3 text-[var(--color-warning)]" />}
+                        {formatStars(repo.stars)}
                     </div>
                     {starDiff !== 0 && (
                         <span className={`text-[10px] ${starDiff > 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>

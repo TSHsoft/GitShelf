@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { Star, ExternalLink, Trash2, Tag as TagIcon, Archive, GitBranch, AlertTriangle, RefreshCw, Heart, FolderInput, MoreHorizontal, BookOpen, User, Building2, Book } from 'lucide-react'
+import { Star, ExternalLink, Trash2, Tag as TagIcon, Archive, GitBranch, AlertTriangle, RefreshCw, Heart, FolderInput, MoreHorizontal, BookOpen, User, Building2, Book, Users } from 'lucide-react'
 import type { Repository } from '@/types'
 import { useStore } from '@/store/useStore'
 import { formatStars } from '@/lib/github'
@@ -195,8 +195,8 @@ export const RepoCard = React.memo(function RepoCard({ repo, isActive, onClick, 
             {/* Footer */}
             <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
                 <div className="flex items-center gap-1 text-[var(--color-warning)]" title={repo.type === 'profile' ? "Followers" : "Stars"}>
-                    <Star className="h-3 w-3" />
-                    <span>{formatStars(repo.stars)} {repo.type === 'profile' && 'Followers'}</span>
+                    {repo.type === 'profile' ? <Users className="h-3 w-3" /> : <Star className="h-3 w-3" />}
+                    <span>{formatStars(repo.stars)}</span>
                 </div>
                 {repo.latest_release && (
                     <div className="flex items-center gap-1 text-[var(--color-success)]" title="Latest Release">

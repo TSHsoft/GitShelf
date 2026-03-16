@@ -84,8 +84,8 @@ export function FolderSelectDialog({ repoIds, onClose }: FolderSelectDialogProps
                         </div>
                     </div>
 
-                    <div className="relative">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)]" />
+                    <div className="relative h-[34px]">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--color-text-muted)]" />
                         <input
                             type="text"
                             placeholder="Find a folder..."
@@ -93,7 +93,7 @@ export function FolderSelectDialog({ repoIds, onClose }: FolderSelectDialogProps
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
                             autoComplete="off"
-                            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] pl-10 pr-4 py-2 text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] transition-all"
+                            className="w-full h-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] pl-10 pr-4 text-xs font-semibold text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] transition-all"
                             autoFocus
                         />
                     </div>
@@ -143,16 +143,16 @@ export function FolderSelectDialog({ repoIds, onClose }: FolderSelectDialogProps
                     </div>
                 </div>
 
-                <div className="p-6 pt-4 border-t border-[var(--color-border)] flex justify-end gap-3 flex-shrink-0 bg-[var(--color-surface)] rounded-b-2xl z-10 font-sans">
+                <div className="p-6 pt-4 border-t border-[var(--color-border)] flex justify-end gap-2 flex-shrink-0 bg-[var(--color-surface)] rounded-b-2xl z-10 font-sans h-[82px] items-center">
                     <button
                         onClick={onClose}
-                        className="rounded-xl px-4 py-2 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-2)] transition-colors"
+                        className="rounded-lg px-4 h-[34px] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-2)] transition-colors"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSave}
-                        className="rounded-xl bg-[var(--color-accent)] px-4 py-2 text-xs font-semibold text-white hover:bg-[var(--color-accent-hover)] transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-surface)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                        className="rounded-lg bg-[var(--color-accent)] px-4 h-[34px] text-xs font-semibold text-white hover:bg-[var(--color-accent-hover)] transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-surface)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                         disabled={selectedFolderId === undefined}
                     >
                         Save Selection

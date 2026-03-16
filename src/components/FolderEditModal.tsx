@@ -125,22 +125,24 @@ export function FolderEditModal({ folderId, onClose }: FolderEditModalProps) {
                                     {name.length}/25
                                 </span>
                             </div>
-                            <input
-                                id="folder-name"
-                                autoFocus
-                                value={name}
-                                onChange={(e) => { setName(e.target.value.slice(0, 25)); setError('') }}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault()
-                                        validate()
-                                    }
-                                }}
-                                maxLength={25}
-                                placeholder="E.g., Documentation, Utilities, Tools..."
-                                autoComplete="off"
-                                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2.5 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent)] transition-colors"
-                            />
+                            <div className="h-[34px]">
+                                <input
+                                    id="folder-name"
+                                    autoFocus
+                                    value={name}
+                                    onChange={(e) => { setName(e.target.value.slice(0, 25)); setError('') }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault()
+                                            validate()
+                                        }
+                                    }}
+                                    maxLength={25}
+                                    placeholder="E.g., Documentation, Utilities, Tools..."
+                                    autoComplete="off"
+                                    className="w-full h-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 text-xs font-semibold text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent)] transition-colors"
+                                />
+                            </div>
                             {error && (
                                 <p className="absolute -bottom-5 left-0.5 text-xs text-[var(--color-danger)] font-medium animate-in fade-in slide-in-from-top-1 duration-200">
                                     {error}
@@ -166,17 +168,17 @@ export function FolderEditModal({ folderId, onClose }: FolderEditModalProps) {
                             </div>
                         </div>
 
-                        <div className="pt-2 flex justify-end gap-3">
+                        <div className="pt-4 flex justify-end gap-2">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="rounded-xl px-4 py-2 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-2)] transition-colors"
+                                className="rounded-lg px-4 h-[34px] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-2)] transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                className="rounded-xl bg-[var(--color-accent)] px-4 py-2 text-xs font-semibold text-white hover:bg-[var(--color-accent-hover)] transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-surface)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                                className="rounded-lg bg-[var(--color-accent)] px-4 h-[34px] text-xs font-semibold text-white hover:bg-[var(--color-accent-hover)] transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-surface)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                                 disabled={!name.trim()}
                             >
                                 {folderId ? 'Save Changes' : 'Create Folder'}

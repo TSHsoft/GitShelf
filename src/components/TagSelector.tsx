@@ -55,7 +55,7 @@ export function TagSelector({ selectedTagIds, onChange }: TagSelectorProps) {
                                     flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all
                                     ${isSelected
                                         ? 'border-[var(--color-accent)] shadow-sm'
-                                        : 'border-transparent bg-[var(--color-surface-2)] text-[var(--color-text-subtle)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-text)]'
+                                        : 'border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-subtle)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-text)] hover:border-[var(--color-text-muted)]'
                                     }
                                 `}
                                 style={isSelected ? {
