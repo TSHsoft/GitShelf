@@ -3,7 +3,7 @@ import { useStore } from '@/store/useStore'
 import { Sidebar } from '@/components/Sidebar'
 import { RepoList } from '@/components/RepoList'
 import { useEffect } from 'react'
-import { AlertTriangle, Settings, WifiOff, User, Book, Folder as FolderIcon } from 'lucide-react'
+import { AlertTriangle, Settings, WifiOff, User, Building2, Book, Folder as FolderIcon } from 'lucide-react'
 import { SettingsModal } from '@/components/SettingsModal'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { useState } from 'react'
@@ -314,7 +314,9 @@ function AppContent() {
                     <div className="flex items-center gap-3">
                       {/* Circular Icon */}
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                        {r.type === 'profile' ? <User className="h-4 w-4" /> : <Book className="h-4 w-4" />}
+                        {r.type === 'profile' ? (
+                            r.profile_type === 'org' ? <Building2 className="h-4 w-4" /> : <User className="h-4 w-4" />
+                        ) : <Book className="h-4 w-4" />}
                       </div>
                       <div className="flex flex-col min-w-0">
                         <span className="text-[11px] text-blue-400 font-bold leading-none mb-1">

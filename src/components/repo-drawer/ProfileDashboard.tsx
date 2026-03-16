@@ -1,4 +1,4 @@
-import { Users, Building2, MapPin, Link as LinkIcon, Twitter, Globe, BookOpen, Star, GitFork, Book, Mail } from 'lucide-react'
+import { Users, Building2, MapPin, Link as LinkIcon, BookOpen, Star, GitFork, Book, Mail, Linkedin, Youtube, Instagram, Twitch, Facebook } from 'lucide-react'
 import DOMPurify from 'dompurify'
 import { formatStars, type ProfileDetails } from '@/lib/github'
 import type { Repository } from '@/types'
@@ -11,6 +11,47 @@ interface ProfileDashboardProps {
     readme: string | null
     baseUrls: { rawBase: string, blobBase: string } | null
     drawerTheme: string
+}
+
+function SocialIcon({ provider, url, className }: { provider: string, url: string, className?: string }) {
+    const p = provider.toUpperCase()
+    const u = url.toLowerCase()
+
+    if (p === 'TWITTER' || u.includes('twitter.com') || u.includes('x.com')) {
+        return (
+            <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+        )
+    }
+    if (p === 'LINKEDIN' || u.includes('linkedin.com')) return <Linkedin className={className} />
+    if (p === 'YOUTUBE' || u.includes('youtube.com')) return <Youtube className={className} />
+    if (p === 'INSTAGRAM' || u.includes('instagram.com')) return <Instagram className={className} />
+    if (p === 'TWITCH' || u.includes('twitch.tv')) return <Twitch className={className} />
+    if (p === 'FACEBOOK' || u.includes('facebook.com')) return <Facebook className={className} />
+    return <LinkIcon className={className} />
+}
+
+function formatSocialDisplay(url: string, provider: string): string {
+    const cleanUrl = url.replace(/\/$/, '')
+    const lowUrl = cleanUrl.toLowerCase()
+    const p = provider.toUpperCase()
+
+    if (p === 'TWITTER' || lowUrl.includes('twitter.com') || lowUrl.includes('x.com')) {
+        const handle = cleanUrl.split('/').pop() || ''
+        return handle.startsWith('@') ? handle : `@${handle}`
+    }
+    if (p === 'YOUTUBE' || lowUrl.includes('youtube.com')) {
+        const handle = cleanUrl.split('/').pop() || ''
+        return handle.startsWith('@') ? handle : `@${handle}`
+    }
+    if (p === 'LINKEDIN' || lowUrl.includes('linkedin.com')) {
+        const segments = cleanUrl.split('/')
+        const inIdx = segments.indexOf('in')
+        const handle = inIdx !== -1 ? segments[inIdx + 1] : segments.pop()
+        return `in/${handle || ''}`
+    }
+    return cleanUrl.replace(/^https?:\/\/(www\.)?/, '')
 }
 
 export function ProfileDashboard({
@@ -60,16 +101,19 @@ export function ProfileDashboard({
                     <p className="mt-1 text-[15px] text-[var(--color-text)] leading-snug text-center lg:text-left">{profileDetails.bio}</p>
                 )}
 
-                {/* Followers */}
                 <div className="flex items-center gap-1 mt-1 text-sm text-[var(--color-text-muted)] flex-wrap justify-center lg:justify-start">
                     <a href={`https://github.com/${profileDetails.login}?tab=followers`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-[var(--color-accent)] transition-colors">
                         <Users className="h-4 w-4 shrink-0" />
-                        <span className="font-semibold text-[var(--color-text)]">{profileDetails.followersCount}</span> followers
+                        <span className="font-semibold text-[var(--color-text)]">{formatStars(repo.stars)}</span> followers
                     </a>
-                    <span className="mx-0.5">·</span>
-                    <a href={`https://github.com/${profileDetails.login}?tab=following`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-[var(--color-accent)] transition-colors">
-                        <span className="font-semibold text-[var(--color-text)]">{profileDetails.followingCount}</span> following
-                    </a>
+                    {profileDetails.type === 'User' && (
+                        <>
+                            <span className="mx-0.5">·</span>
+                            <a href={`https://github.com/${profileDetails.login}?tab=following`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-[var(--color-accent)] transition-colors">
+                                <span className="font-semibold text-[var(--color-text)]">{formatStars(profileDetails.followingCount)}</span> following
+                            </a>
+                        </>
+                    )}
                 </div>
 
                 {/* Details List */}
@@ -96,18 +140,24 @@ export function ProfileDashboard({
                             <a href={profileDetails.websiteUrl.startsWith('http') ? profileDetails.websiteUrl : `https://${profileDetails.websiteUrl}`} target="_blank" rel="noopener noreferrer" className="truncate hover:text-[var(--color-accent)] transition-colors">{profileDetails.websiteUrl.replace(/^https?:\/\//, '')}</a>
                         </li>
                     )}
-                    {profileDetails.socialAccounts?.map((soc) => (
-                        <li key={soc.url} className="flex items-center gap-2 max-w-full">
-                            {soc.provider === 'TWITTER' ? <Twitter className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" /> :
-                                soc.provider === 'LINKEDIN' ? <Globe className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" /> :
-                                    <LinkIcon className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />}
-                            <a href={soc.url} target="_blank" rel="noopener noreferrer" className="truncate hover:text-[var(--color-accent)] transition-colors">{soc.url.replace(/^https?:\/\//, '')}</a>
-                        </li>
-                    ))}
-                    {profileDetails.twitterUsername && !profileDetails.socialAccounts?.some(s => s.provider === 'TWITTER' || s.url.includes('twitter.com')) && (
+                    {profileDetails.socialAccounts?.map((soc) => {
+                        const targetUrl = soc.url.replace('twitter.com', 'x.com')
+                        const displayText = formatSocialDisplay(soc.url, soc.provider)
+                        return (
+                            <li key={soc.url} className="flex items-center gap-2 max-w-full">
+                                <SocialIcon provider={soc.provider} url={soc.url} className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+                                <a href={targetUrl} target="_blank" rel="noopener noreferrer" className="truncate hover:text-[var(--color-accent)] transition-colors">
+                                    {displayText}
+                                </a>
+                            </li>
+                        )
+                    })}
+                    {profileDetails.twitterUsername && !profileDetails.socialAccounts?.some(s => s.provider === 'TWITTER' || s.url.includes('twitter.com') || s.url.includes('x.com')) && (
                         <li className="flex items-center gap-2 max-w-full">
-                            <Twitter className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
-                            <a href={`https://twitter.com/${profileDetails.twitterUsername}`} target="_blank" rel="noopener noreferrer" className="truncate hover:text-[#1DA1F2] transition-colors">@{profileDetails.twitterUsername}</a>
+                            <SocialIcon provider="TWITTER" url={`https://x.com/${profileDetails.twitterUsername}`} className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+                            <a href={`https://x.com/${profileDetails.twitterUsername}`} target="_blank" rel="noopener noreferrer" className="truncate hover:text-[var(--color-text)] transition-colors">
+                                @{profileDetails.twitterUsername}
+                            </a>
                         </li>
                     )}
                 </ul>
@@ -116,24 +166,27 @@ export function ProfileDashboard({
             {/* Right Column - Readme & Repos */}
             <div className="flex-1 min-w-0 flex flex-col gap-8">
                 {/* Profile README */}
-                <ReadmeViewer
-                    loading={loading}
-                    readme={readme}
-                    baseUrls={baseUrls}
-                    drawerTheme={drawerTheme}
-                    repoUrl={repo.url}
-                    title={
-                        <>
-                            <BookOpen className="h-4 w-4" />
-                            {repo.owner} / README.md
-                        </>
-                    }
-                />
+                {(!loading && (readme === 'No README found.' || readme === 'Failed to load README / Profile data.' || !readme)) ? null : (
+                    <ReadmeViewer
+                        loading={loading}
+                        readme={readme}
+                        baseUrls={baseUrls}
+                        drawerTheme={drawerTheme}
+                        repoUrl={repo.url}
+                        title={
+                            <>
+                                <BookOpen className="h-4 w-4" />
+                                {repo.owner} / README.md
+                            </>
+                        }
+                    />
+                )}
 
                 {/* Pinned/Popular Repositories Overview */}
                 {(profileDetails.pinnedRepos.length > 0 || profileDetails.popularRepos.length > 0) && (() => {
                     const isPinned = profileDetails.pinnedRepos.length > 0;
-                    const displayRepos = isPinned ? profileDetails.pinnedRepos : profileDetails.popularRepos;
+                    const displayRepos = (isPinned ? profileDetails.pinnedRepos : profileDetails.popularRepos)
+                        .filter(r => !r.isMirror && !r.archived);
 
                     return (
                         <div className="space-y-3">
@@ -143,7 +196,7 @@ export function ProfileDashboard({
                                 </h3>
                                 <div className="text-xs text-[var(--color-text-subtle)] flex items-center gap-1">
                                     <Book className="h-3 w-3" />
-                                    {profileDetails.repositoriesCount} public repos
+                                    {profileDetails.repositoriesCount} repositories
                                 </div>
                             </div>
 
@@ -171,6 +224,19 @@ export function ProfileDashboard({
                                     </a>
                                 ))}
                             </div>
+                            
+                            {profileDetails.repositoriesCount > displayRepos.length && (
+                                <a
+                                    href={profileDetails.type === 'Organization' 
+                                        ? `https://github.com/orgs/${profileDetails.login}/repositories` 
+                                        : `https://github.com/${profileDetails.login}?tab=repositories`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block mt-4 text-sm text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] font-medium transition-colors text-center"
+                                >
+                                    View all repositories
+                                </a>
+                            )}
                         </div>
                     )
                 })()}

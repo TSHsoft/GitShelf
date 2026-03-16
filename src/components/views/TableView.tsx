@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Trash2, Tag as TagIcon, Archive, AlertTriangle, RefreshCw, Star, Heart, MoreHorizontal, FolderInput, BookOpen, User, Book } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Trash2, Tag as TagIcon, Archive, AlertTriangle, RefreshCw, Star, Heart, MoreHorizontal, FolderInput, BookOpen, User, Building2, Book } from 'lucide-react'
 import type { Repository, SortField, RepoStatus } from '@/types'
 import { useStore } from '@/store/useStore'
 import { formatStars } from '@/lib/github'
@@ -114,7 +114,11 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                 {/* Name & Description */}
                 <div className="flex-[3] min-w-0 flex flex-col justify-center">
                     <div className="flex items-center gap-1.5">
-                        {repo.type === 'profile' ? <User className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" /> : <Book className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />}
+                        {repo.type === 'profile' ? (
+                            repo.profile_type === 'org'
+                                ? <Building2 className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+                                : <User className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+                        ) : <Book className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />}
                         <span className="text-[var(--color-text)] font-medium truncate">{repo.owner}/{repo.name}</span>
                         {tags.length > 0 && (
                             <div className="flex gap-1 shrink-0">

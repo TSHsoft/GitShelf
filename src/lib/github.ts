@@ -139,7 +139,8 @@ export async function fetchRepository(repoPath: string, token?: string, opts?: {
                 tags: [],
                 added_at: Date.now(),
                 last_synced_at: Date.now(),
-                type: 'profile'
+                type: 'profile',
+                profile_type: data.type === 'Organization' ? 'org' : 'user',
             }
         }
 
@@ -344,6 +345,7 @@ function buildSyncGraphQLQuery(repos: Repository[]): string {
                 followers { totalCount }
                 updatedAt
                 id
+                __typename
             `
             if (repo.node_id) {
                 return `
@@ -358,13 +360,25 @@ function buildSyncGraphQLQuery(repos: Repository[]): string {
                         description
                         updatedAt
                         id
+                        __typename
                     }
                 }
                 `
             }
             return `
-            repo${index}: user(login: "${repo.owner}") {
-                ${fields}
+            repo${index}: repositoryOwner(login: "${repo.owner}") {
+                ... on User {
+                    ${fields}
+                }
+                ... on Organization {
+                    login
+                    url
+                    name
+                    description
+                    updatedAt
+                    id
+                    __typename
+                }
             }
             `
         }
@@ -431,7 +445,7 @@ function parseGraphQLSyncResponse(
         if (existing.type === 'profile') {
             const isOrg = data.__typename === 'Organization'
             const bio = isOrg ? data.description : data.bio
-            const followers = isOrg ? 0 : (data.followers?.totalCount || 0)
+            const followers = data.followers?.totalCount || 0
 
             const profileLogin = data.login ?? existing.id
             const newRepoData: Repository = {
@@ -442,12 +456,13 @@ function parseGraphQLSyncResponse(
                 name: data.name ?? profileLogin,
                 owner: profileLogin,
                 description: bio || null,
-                stars: followers,
-                prev_stars: existing.stars,
+                stars: isOrg ? existing.stars : followers,
+                prev_stars: isOrg ? existing.prev_stars : existing.stars,
                 updated_at: data.updatedAt || new Date().toISOString(),
                 last_synced_at: Date.now(),
                 status: 'active',
                 is_favorite: existing.is_favorite,
+                profile_type: isOrg ? 'org' : 'user',
             }
 
             result.updated++
@@ -770,6 +785,8 @@ export interface ProfileRepo {
     stars: number;
     forks: number;
     language: { name: string; color: string } | null;
+    isMirror: boolean;
+    archived: boolean;
 }
 
 export interface SocialAccount {
@@ -796,6 +813,7 @@ export interface ProfileDetails {
     repositoriesCount: number;
     pinnedRepos: ProfileRepo[];
     popularRepos: ProfileRepo[];
+    type: 'User' | 'Organization';
 }
 
 export async function fetchProfileDetails(username: string, token?: string): Promise<ProfileDetails | null> {
@@ -829,7 +847,7 @@ query($username: String!) {
       createdAt
       followers { totalCount }
       following { totalCount }
-      repositories(first: 6, ownerAffiliations: OWNER, isFork: false, orderBy: {field: STARGAZERS, direction: DESC}) {
+      repositories(first: 10, ownerAffiliations: OWNER, orderBy: {field: STARGAZERS, direction: DESC}) {
         totalCount
         nodes {
           id
@@ -838,9 +856,11 @@ query($username: String!) {
           stargazerCount
           forkCount
           primaryLanguage { name color }
+          isMirror
+          isArchived
         }
       }
-      pinnedItems(first: 6, types: REPOSITORY) {
+      pinnedItems(first: 10, types: REPOSITORY) {
         nodes {
           ... on Repository {
             id
@@ -849,6 +869,8 @@ query($username: String!) {
             stargazerCount
             forkCount
             primaryLanguage { name color }
+            isMirror
+            isArchived
           }
         }
       }
@@ -864,7 +886,7 @@ query($username: String!) {
       websiteUrl
       twitterUsername
       createdAt
-      repositories(first: 6, isFork: false, orderBy: {field: STARGAZERS, direction: DESC}) {
+      repositories(first: 10, orderBy: {field: STARGAZERS, direction: DESC}) {
         totalCount
         nodes {
           id
@@ -873,9 +895,11 @@ query($username: String!) {
           stargazerCount
           forkCount
           primaryLanguage { name color }
+          isMirror
+          isArchived
         }
       }
-      pinnedItems(first: 6, types: REPOSITORY) {
+      pinnedItems(first: 10, types: REPOSITORY) {
         nodes {
           ... on Repository {
             id
@@ -884,6 +908,8 @@ query($username: String!) {
             stargazerCount
             forkCount
             primaryLanguage { name color }
+            isMirror
+            isArchived
           }
         }
       }
@@ -892,9 +918,16 @@ query($username: String!) {
 }
 `
     try {
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const response: any = await octokit.graphql(query, { username })
+        let response: any;
+        try {
+            response = await octokit.graphql(query, { username })
+        } catch (err: any) {
+            if (err.data) {
+                response = err.data
+            } else {
+                throw err
+            }
+        }
         const owner = response.repositoryOwner
         if (!owner) return null
 
@@ -905,7 +938,9 @@ query($username: String!) {
             description: r.description,
             stars: r.stargazerCount,
             forks: r.forkCount,
-            language: r.primaryLanguage ? { name: r.primaryLanguage.name, color: r.primaryLanguage.color } : null
+            language: r.primaryLanguage ? { name: r.primaryLanguage.name, color: r.primaryLanguage.color } : null,
+            isMirror: r.isMirror,
+            archived: r.isArchived
         })
 
         const isOrg = owner.__typename === 'Organization'
@@ -931,7 +966,8 @@ query($username: String!) {
             createdAt: owner.createdAt,
             repositoriesCount: owner.repositories?.totalCount || 0,
             pinnedRepos: (owner.pinnedItems?.nodes || []).map(mapRepo),
-            popularRepos: (owner.repositories?.nodes || []).map(mapRepo)
+            popularRepos: (owner.repositories?.nodes || []).map(mapRepo),
+            type: owner.__typename as 'User' | 'Organization'
         }
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err)
@@ -1103,16 +1139,28 @@ function buildFetchGraphQLQuery(repoPaths: string[]): string {
         // Handle profile URLs
         if (!owner || !name) {
             const profileFields = `
-                login
-                url
-                name
-                bio
-                followers { totalCount }
-                updatedAt
-                id
+                ... on User {
+                    login
+                    url
+                    name
+                    bio
+                    followers { totalCount }
+                    following { totalCount }
+                    updatedAt
+                    id
+                }
+                ... on Organization {
+                    login
+                    url
+                    name
+                    description
+                    followers { totalCount }
+                    updatedAt
+                    id
+                }
             `
             return `
-            repo${index}: user(login: "${path}") {
+            repo${index}: repositoryOwner(login: "${path}") {
                 ${profileFields}
             }
             `

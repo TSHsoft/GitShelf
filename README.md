@@ -81,7 +81,7 @@ GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign i
 | **Styling** | [Tailwind CSS v4](https://tailwindcss.com) |
 | **Validation** | [Zod](https://zod.dev) |
 | **Auth** | GitHub OAuth 2.0 (`gist` + `read:user` scopes only) |
-| **Storage** | GitHub Gist (cloud) + `localStorage` (local) |
+| **Storage** | GitHub Gist (cloud) + IndexedDB / `localStorage` (local) |
 | **Markdown** | `react-markdown` + `remark-gfm` + `rehype-sanitize` |
 | **Icons** | [Lucide React](https://lucide.dev) |
 
@@ -97,7 +97,7 @@ GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign i
 
 ```bash
 git clone https://github.com/TSHsoft/GitShelf.git
-cd GitShelf/gitshelf-app
+cd GitShelf
 ```
 
 ### 2. Install dependencies
@@ -112,7 +112,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Follow the local URL shown in your terminal (usually [http://localhost:5173](http://localhost:5173)).
 > **Note:** To enable GitHub OAuth sign-in locally, you'll need to register a GitHub OAuth App, deploy a Cloudflare Worker, and configure your local `.env` file as described in the **GitHub OAuth Setup** section.
 
 ### 4. Build for production

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { Star, ExternalLink, Trash2, Tag as TagIcon, Archive, GitBranch, AlertTriangle, RefreshCw, Heart, FolderInput, MoreHorizontal, BookOpen, User, Book } from 'lucide-react'
+import { Star, ExternalLink, Trash2, Tag as TagIcon, Archive, GitBranch, AlertTriangle, RefreshCw, Heart, FolderInput, MoreHorizontal, BookOpen, User, Building2, Book } from 'lucide-react'
 import type { Repository } from '@/types'
 import { useStore } from '@/store/useStore'
 import { formatStars } from '@/lib/github'
@@ -64,7 +64,11 @@ export const RepoCard = React.memo(function RepoCard({ repo, isActive, onClick, 
                         {repo.archived && <Archive className="h-3 w-3 text-[var(--color-warning)] shrink-0" />}
                     </div>
                     <div className="flex items-center gap-1.5 truncate leading-tight">
-                        {repo.type === 'profile' ? <User className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" /> : <Book className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />}
+                        {repo.type === 'profile' ? (
+                            repo.profile_type === 'org'
+                                ? <Building2 className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+                                : <User className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+                        ) : <Book className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />}
                         <h3 className="text-sm font-semibold text-[var(--color-text)] truncate">{repo.name}</h3>
                     </div>
                     {statusBadge}

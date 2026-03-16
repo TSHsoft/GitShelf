@@ -52,6 +52,7 @@ export const RepositorySchema = z.object({
     folder_id: z.string().nullable().optional(),
     added_at: z.number(),
     languages: z.record(z.string(), z.number()).optional(),
+    profile_type: z.enum(['user', 'org']).optional(), // Only set when type === 'profile'
 })
 
 export const SettingsSchema = z.object({
