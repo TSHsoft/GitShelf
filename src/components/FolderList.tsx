@@ -73,10 +73,10 @@ const DroppableFolder = memo(function DroppableFolder({
     }, [count])
 
     const style = {
-        transform: CSS.Translate.toString(transform),
+        transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 20 : (showMenu ? 50 : 1),
+        opacity: isDragging ? 0 : 1,
+        zIndex: isDragging ? 50 : (showMenu ? 40 : 1),
     }
 
     const setNodeRef = (node: HTMLElement | null) => {
@@ -94,7 +94,9 @@ const DroppableFolder = memo(function DroppableFolder({
             onClick={onClick}
             data-folder-droppable={id !== 'sys:all' ? 'true' : undefined}
             className={`group relative flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium cursor-pointer border transition-all ${
-                isSelected
+                isDragging
+                    ? 'border-dashed border-[var(--color-accent)] ring-2 ring-[var(--color-accent)]/20 shadow-sm'
+                    : isSelected
                     ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-transparent'
                     : 'text-[var(--color-text)] hover:bg-[var(--color-surface-2)] border-transparent'
                 }`}

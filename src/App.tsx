@@ -16,7 +16,7 @@ import { decryptTokenAsync } from '@/lib/crypto'
 import { DndContext, DragOverlay, pointerWithin, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { Modifier } from '@dnd-kit/core'
-import type { DragStartEvent, DragEndEvent, DragMoveEvent } from '@dnd-kit/core'
+import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
 import { useShallow } from 'zustand/react/shallow'
 import type { GitShelfStore } from '@/store/types'
 import type { Repository, Folder } from '@/types'
@@ -44,16 +44,19 @@ function LoadingScreen() {
 const MemoizedSidebar = React.memo(Sidebar)
 const MemoizedRepoList = React.memo(RepoList)
 
-const snapTopLeftToCursor: Modifier = ({ transform, activatorEvent, activeNodeRect }) => {
-    if (activatorEvent && activeNodeRect) {
+// Smart snap: Center the cursor only for repositories (small icons), 
+// keep relative offset for folders to prevent "jumping" lag.
+// We offset the repo icon by +8px to the bottom-right so the cursor tip 
+// is never covered, allowing CSS :hover to work perfectly on targets.
+const smartSnap: Modifier = ({ transform, activatorEvent, activeNodeRect, active }) => {
+    if (active?.data.current?.type === 'repository' && activatorEvent && activeNodeRect) {
         const isTouch = 'touches' in activatorEvent;
         const p = isTouch ? (activatorEvent as TouchEvent).touches[0] : (activatorEvent as MouseEvent);
         
-        // Center the 48px (h-12) logo under the cursor
         return {
             ...transform,
-            x: transform.x + (p.clientX - activeNodeRect.left) - 24,
-            y: transform.y + (p.clientY - activeNodeRect.top) - 24,
+            x: transform.x + (p.clientX - activeNodeRect.left) + 8,
+            y: transform.y + (p.clientY - activeNodeRect.top) + 8,
         };
     }
     return transform;
@@ -90,42 +93,8 @@ function AppContent() {
     const [activeFolder, setActiveFolder] = useState<{ id: string, name: string, color?: string } | null>(null)
 
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
     )
-
-    // Track last over ID and element to prevent redundant DOM operations
-    const lastOverId = React.useRef<string | null>(null)
-    const lastOverFolderEl = React.useRef<Element | null>(null)
-
-    const handleDragMove = (event: DragMoveEvent) => {
-        const overId = event.over?.id as string | undefined
-
-        if (lastOverId.current === overId) return;
-        
-        // Clear previous highlight
-        if (lastOverFolderEl.current) {
-            lastOverFolderEl.current.removeAttribute('data-over')
-            lastOverFolderEl.current = null
-        }
-
-        lastOverId.current = overId ?? null;
-
-        // Apply new highlight if over a folder
-        if (overId && typeof overId === 'string' && overId.startsWith('folder-')) {
-            const folderEl = document.getElementById(overId)
-            if (folderEl) {
-                folderEl.setAttribute('data-over', 'true')
-                lastOverFolderEl.current = folderEl
-            }
-        }
-    }
-
-    const clearFolderHighlight = () => {
-        if (lastOverFolderEl.current) {
-            lastOverFolderEl.current.removeAttribute('data-over')
-            lastOverFolderEl.current = null
-        }
-    }
 
     const handleDragStart = (event: DragStartEvent) => {
         const { active } = event
@@ -145,14 +114,50 @@ function AppContent() {
         }
     }
 
+    const handleDragOver = (event: any) => {
+        const { active, over } = event
+        if (!over) return
+
+        const activeType = active.data.current?.type
+        const overType = over.data.current?.type
+
+        // Live sorting for folders
+        if (activeType === 'folder-item' && (overType === 'folder-item' || overType === 'folder')) {
+            const activeFolderId = active.data.current?.folderId
+            const overFolderId = over.data.current?.folderId
+
+            if (activeFolderId && overFolderId && activeFolderId !== overFolderId) {
+                const folders = Object.values(data.folders || {}).sort((a: Folder, b: Folder) => {
+                    if (a.sort_order !== undefined && b.sort_order !== undefined) return a.sort_order - b.sort_order
+                    return a.name.localeCompare(b.name)
+                })
+
+                const oldIndex = folders.findIndex((f: Folder) => f.id === activeFolderId)
+                const newIndex = folders.findIndex((f: Folder) => f.id === overFolderId)
+
+                if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+                    const newFoldersArr = arrayMove(folders, oldIndex, newIndex)
+                    const newFoldersObj = { ...data.folders }
+                    newFoldersArr.forEach((f: Folder, idx: number) => {
+                        newFoldersObj[f.id] = { ...f, sort_order: idx + 1 }
+                    })
+                    
+                    // Update store immediately for live animation
+                    useStore.getState().setData({
+                        ...data,
+                        folders: newFoldersObj
+                    })
+                }
+            }
+        }
+    }
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event
         
-        clearFolderHighlight()
         setActiveId(null)
         setActiveRepo(null)
         setDraggedIds([])
-        lastOverId.current = null
         setActiveFolder(null)
 
         if (!over) return;
@@ -169,32 +174,13 @@ function AppContent() {
             }
             clearSelection()
         }
-
-        if (active.data.current?.type === 'folder-item' && over.data.current?.type === 'folder-item') {
-            if (active.id !== over.id) {
-                const folders = Object.values(data.folders || {}).sort((a: Folder, b: Folder) => {
-                    if (a.sort_order !== undefined && b.sort_order !== undefined) return a.sort_order - b.sort_order
-                    return a.name.localeCompare(b.name)
-                })
-                
-                const activeFolderId = String(active.id).replace('sort-folder-', '')
-                const overFolderId = String(over.id).replace('sort-folder-', '')
-                const oldIndex = folders.findIndex((f: Folder) => f.id === activeFolderId)
-                const newIndex = folders.findIndex((f: Folder) => f.id === overFolderId)
-
-                if (oldIndex !== -1 && newIndex !== -1) {
-                    const newFoldersArr = arrayMove(folders, oldIndex, newIndex)
-                    const newFoldersObj = { ...data.folders }
-                    newFoldersArr.forEach((f: Folder, idx: number) => {
-                        newFoldersObj[f.id] = { ...f, sort_order: idx + 1 }
-                    })
-                    useStore.getState().setData({
-                        ...data,
-                        last_modified: Date.now(),
-                        folders: newFoldersObj
-                    })
-                }
-            }
+        
+        // Final save with timestamp on drag end
+        if (active.data.current?.type === 'folder-item') {
+            useStore.getState().setData({
+                ...useStore.getState().data,
+                last_modified: Date.now()
+            })
         }
     }
 
@@ -241,10 +227,10 @@ function AppContent() {
             collisionDetection={pointerWithin}
             autoScroll={false}
             onDragStart={handleDragStart}
-            onDragMove={handleDragMove}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
         >
-            <div className={`flex h-screen overflow-hidden bg-[var(--color-bg)] flex-col ${activeId ? 'is-dragging' : ''}`}>
+            <div className="flex h-screen overflow-hidden bg-[var(--color-bg)] flex-col">
                 <Toaster position="bottom-right" theme={theme as 'light' | 'dark' | 'system'} richColors />
                 {!isOnline && (
                     <div className="flex items-center justify-center gap-2 bg-[var(--color-warning)] text-[var(--color-bg)] px-4 py-1.5 text-xs font-medium z-50 text-black">
@@ -273,31 +259,32 @@ function AppContent() {
                         </ErrorBoundary>
                     </main>
                 </div>
-                <DragOverlay dropAnimation={null} modifiers={[snapTopLeftToCursor]}>
+                <DragOverlay dropAnimation={null} modifiers={[smartSnap]}>
                     {activeId && activeRepo ? (
                         <div className="pointer-events-none">
-                            <div
-                                className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500 border-2 border-white/20"
-                                style={{
-                                    willChange: 'transform',
-                                    transform: 'translateZ(0)',
-                                    boxShadow: '0 8px 30px rgba(0,0,0,0.3)' 
-                                }}
-                            >
-                                <Book className="h-6 w-6 text-white" />
-                                
+                            <div className="relative h-10 w-10">
+                                <img 
+                                    src="/favicon.svg" 
+                                    alt="drag icon" 
+                                    className="h-full w-full drop-shadow-md"
+                                />
                                 {draggedIds.length > 1 && (
-                                    <div className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-bold border-2 border-[var(--color-bg)] shadow-md animate-fade-in">
+                                    <div className="absolute -top-1.5 -right-1.5 flex h-4.5 w-4.5 min-w-[18px] min-h-[18px] items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold shadow-md z-10">
                                         {draggedIds.length}
                                     </div>
                                 )}
                             </div>
                         </div>
                     ) : activeId && activeFolder ? (
-                        <div className="pointer-events-none shadow-2xl w-[220px]">
-                            <div className="flex items-center gap-2 px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg">
-                                <FolderIcon className="h-4 w-4 text-blue-500" />
-                                <span className="text-sm font-medium truncate">{activeFolder.name}</span>
+                        <div className="pointer-events-none w-[208px] shadow-xl">
+                            <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium bg-[var(--color-surface-2)] border border-[var(--color-accent)] text-[var(--color-text)]">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <FolderIcon
+                                        className="h-4 w-4 shrink-0 text-[var(--color-accent)]"
+                                        style={activeFolder.color ? { color: activeFolder.color } : undefined}
+                                    />
+                                    <span className="truncate">{activeFolder.name}</span>
+                                </div>
                             </div>
                         </div>
                     ) : null}
