@@ -159,6 +159,7 @@ VITE_CRYPTO_SECRET=your_generated_random_secret_here
 ```
 
 > **Important**: You must generate a secure, random string for `VITE_CRYPTO_SECRET`. This key is used to encrypt your GitHub access token in the browser's local storage.
+> **GitShelf uses account-bound encryption**: This secret is combined with your unique GitHub User ID to derive the final encryption key, ensuring that tokens are securely tied to your specific account.
 > You can easily generate a strong random 32-byte hex string by running this command in your terminal:
 > ```bash
 > node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
