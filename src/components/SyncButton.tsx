@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { syncAll } from '@/lib/github'
-import { decryptTokenAsync } from '@/lib/crypto'
 import { useGithubRateLimit } from '@/hooks/useGithubRateLimit'
 
 import { formatRelativeTime } from '@/lib/utils'
@@ -67,7 +66,7 @@ export function SyncButton() {
         abortControllerRef.current = controller
 
         try {
-            const token = githubToken ? await decryptTokenAsync(githubToken) : undefined
+            const token = await useStore.getState().getDecryptedToken()
             const { repos: updated, migrations } = await syncAll(
                 data.repositories,
                 token,

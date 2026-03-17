@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, memo, useEffect, useRef } from 'react'
 import { Folder as FolderIcon, MoreHorizontal, FolderPlus, Edit2, Trash2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { FolderEditModal } from './FolderEditModal'
@@ -7,7 +7,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-function DroppableFolder({
+const DroppableFolder = memo(function DroppableFolder({
     id,
     name,
     color,
@@ -30,7 +30,7 @@ function DroppableFolder({
     count?: number
     isSortable?: boolean
 }) {
-    const { isOver, setNodeRef: setDroppableRef } = useDroppable({
+    const { setNodeRef: setDroppableRef } = useDroppable({
         id: `folder-${id}`,
         data: {
             type: 'folder',
@@ -57,6 +57,20 @@ function DroppableFolder({
     })
 
     const [showMenu, setShowMenu] = useState(false)
+    const [showStatusBriefly, setShowStatusBriefly] = useState(false)
+    const lastCount = useRef(count)
+    const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    useEffect(() => {
+        if (lastCount.current !== undefined && count !== lastCount.current) {
+            lastCount.current = count
+            if (statusTimer.current) clearTimeout(statusTimer.current)
+            statusTimer.current = setTimeout(() => setShowStatusBriefly(true), 0)
+            statusTimer.current = setTimeout(() => setShowStatusBriefly(false), 1000)
+        } else {
+            lastCount.current = count
+        }
+    }, [count])
 
     const style = {
         transform: CSS.Translate.toString(transform),
@@ -65,7 +79,6 @@ function DroppableFolder({
         zIndex: isDragging ? 20 : (showMenu ? 50 : 1),
     }
 
-    // Merge refs
     const setNodeRef = (node: HTMLElement | null) => {
         setDroppableRef(node)
         if (isSortable) setSortableRef(node)
@@ -74,22 +87,23 @@ function DroppableFolder({
     return (
         <div
             ref={setNodeRef}
+            id={`folder-${id}`}
             style={isSortable ? style : undefined}
             {...(isSortable ? attributes : {})}
             {...(isSortable ? listeners : {})}
             onClick={onClick}
-            className={`group relative flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer border ${isSelected
-                ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-transparent'
-                : isOver
-                    ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border-dashed border-[var(--color-accent)]'
+            data-folder-droppable={id !== 'sys:all' ? 'true' : undefined}
+            className={`group relative flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium cursor-pointer border transition-all ${
+                isSelected
+                    ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-transparent'
                     : 'text-[var(--color-text)] hover:bg-[var(--color-surface-2)] border-transparent'
                 }`}
             onMouseLeave={() => setShowMenu(false)}
         >
             <div className="flex items-center gap-2 min-w-0 flex-1">
                 <FolderIcon
-                    className={`h-4 w-4 shrink-0 transition-colors ${isSelected || isOver ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'}`}
-                    style={color && !isSelected && !isOver ? { color } : undefined}
+                    className={`h-4 w-4 shrink-0 transition-colors ${isSelected ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'}`}
+                    style={color && !isSelected ? { color } : undefined}
                 />
                 {!isCollapsed && <span className="truncate">{name}</span>}
             </div>
@@ -97,7 +111,7 @@ function DroppableFolder({
             {!isCollapsed && (
                 <div className="flex items-center justify-end shrink-0 ml-2 relative min-w-[24px] h-6">
                     {count !== undefined && (
-                        <span className={`absolute right-0 flex items-center justify-center text-[10px] font-medium px-1.5 py-0.5 rounded-full ${isSelected ? 'text-[var(--color-accent)] bg-[var(--color-accent)]/10' : 'text-[var(--color-text-muted)] bg-[var(--color-surface-2)]'} tabular-nums transition-opacity duration-200 ${onEdit ? 'group-hover:opacity-0 pointer-events-none' : ''}`}>
+                        <span className={`absolute right-0 flex items-center justify-center text-[10px] font-medium px-1.5 py-0.5 rounded-full tabular-nums transition-all duration-300 ${isSelected ? 'text-[var(--color-accent)] bg-[var(--color-accent)]/10' : 'text-[var(--color-text-muted)] bg-[var(--color-surface-2)]'} ${showStatusBriefly ? 'scale-110 !opacity-100 z-20 shadow-sm ring-1 ring-[var(--color-accent)]/30' : (onEdit ? 'group-hover:opacity-0 group-hover:scale-90 pointer-events-none' : 'opacity-100')}`}>
                             {count}
                         </span>
                     )}
@@ -105,7 +119,7 @@ function DroppableFolder({
                         <>
                             <button
                                 onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }}
-                                className={`absolute right-0 p-1 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--color-surface-3)] z-10 ${showMenu ? 'opacity-100 bg-[var(--color-surface-3)]' : ''}`}
+                                className={`absolute right-0 p-1 flex items-center justify-center rounded transition-all duration-200 hover:bg-[var(--color-surface-3)] z-10 ${showMenu ? 'opacity-100 bg-[var(--color-surface-3)]' : showStatusBriefly ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}
                             >
                                 <MoreHorizontal className="h-3 w-3" />
                             </button>
@@ -133,15 +147,36 @@ function DroppableFolder({
             )}
         </div>
     )
-}
+})
+
+import { useShallow } from 'zustand/react/shallow'
+import type { GitShelfStore } from '@/store/types'
 
 export function FolderList({ isCollapsed }: { isCollapsed: boolean }) {
-    const { data, selectedFolderId, setSelectedFolderId, removeFolder } = useStore()
+    const { data, selectedFolderId, setSelectedFolderId, removeFolder } = useStore(useShallow((state: GitShelfStore) => ({
+        data: state.data,
+        selectedFolderId: state.selectedFolderId,
+        setSelectedFolderId: state.setSelectedFolderId,
+        removeFolder: state.removeFolder
+    })))
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
     const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null)
 
-    const allRepos = Object.values(data.repositories || {})
+    const folderCounts = useMemo(() => {
+        const counts: Record<string, number> = { 'sys:all': 0, 'sys:uncategorized': 0 }
+        const repos = Object.values(data.repositories || {})
+        counts['sys:all'] = repos.length
+        
+        for (const r of repos) {
+            if (!r.folder_id) {
+                counts['sys:uncategorized']++
+            } else {
+                counts[r.folder_id] = (counts[r.folder_id] || 0) + 1
+            }
+        }
+        return counts
+    }, [data.repositories])
 
     const folders = Object.values(data.folders || {}).sort((a, b) => {
         if (a.sort_order !== undefined && b.sort_order !== undefined) return a.sort_order - b.sort_order
@@ -187,7 +222,7 @@ export function FolderList({ isCollapsed }: { isCollapsed: boolean }) {
                     isSelected={selectedFolderId === 'sys:all'}
                     onClick={() => setSelectedFolderId('sys:all')}
                     isCollapsed={isCollapsed}
-                    count={allRepos.length}
+                    count={folderCounts['sys:all']}
                 />
                 <DroppableFolder
                     id="sys:uncategorized"
@@ -195,7 +230,7 @@ export function FolderList({ isCollapsed }: { isCollapsed: boolean }) {
                     isSelected={selectedFolderId === null || selectedFolderId === 'sys:uncategorized'}
                     onClick={() => setSelectedFolderId(null)}
                     isCollapsed={isCollapsed}
-                    count={allRepos.filter(r => !r.folder_id).length}
+                    count={folderCounts['sys:uncategorized']}
                 />
 
                 {!isCollapsed && folders.length > 0 && <div className="my-1 h-px bg-[var(--color-border)] mx-2" />}
@@ -216,7 +251,7 @@ export function FolderList({ isCollapsed }: { isCollapsed: boolean }) {
                             onDelete={() => handleDelete(folder.id)}
                             isCollapsed={isCollapsed}
                             isSortable={true}
-                            count={allRepos.filter(r => r.folder_id === folder.id).length}
+                            count={folderCounts[folder.id] || 0}
                         />
                     ))}
                 </SortableContext>

@@ -4,7 +4,6 @@ import { fetchReadme, formatStars, fetchProfileDetails, type ProfileDetails } fr
 import { formatDate } from '@/lib/utils'
 import { useStore } from '@/store/useStore'
 import { useShallow } from 'zustand/react/shallow'
-import { decryptTokenAsync } from '@/lib/crypto'
 import { ReadmeViewer } from './repo-drawer/ReadmeViewer'
 import { ProfileDashboard } from './repo-drawer/ProfileDashboard'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -40,9 +39,7 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
         const loadReadme = async () => {
             setLoading(true)
             try {
-                const token = github_token
-                    ? await decryptTokenAsync(github_token)
-                    : undefined
+                const token = await useStore.getState().getDecryptedToken()
 
                 // GitHub profile readmes are stored in a repository named exactly after the user
                 const targetRepoName = repo.type === 'profile' ? repo.owner : repo.name
@@ -100,23 +97,24 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
             />
 
             {/* Drawer */}
-            <div data-theme={drawerTheme} className="relative mt-14 rounded-tl-2xl w-full max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-16.5rem)] h-[calc(100%-3.5rem)] bg-[var(--color-surface)] text-[var(--color-text)] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)] flex flex-col animate-in slide-in-from-right duration-300 border-l border-t border-[var(--color-border)]">
+            <div 
+                data-theme={drawerTheme} 
+                className="relative mt-14 rounded-tl-2xl w-full max-w-[calc(100vw-1.5rem)] md:max-w-[calc(100vw-18rem)] lg:max-w-[1200px] h-[calc(100%-3.5rem)] bg-[var(--color-surface)] text-[var(--color-text)] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)] flex flex-col animate-in slide-in-from-right duration-300 border-l border-t border-[var(--color-border)] @container"
+            >
                 {/* Header */}
-                <div className="flex items-start justify-between p-6 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] rounded-tl-2xl">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                            <span>{repo.owner}</span>
-                            <span>/</span>
-                        </div>
-                        <h2 className="text-xl font-bold text-[var(--color-text)] flex items-center gap-2">
-                            {repo.type === 'profile' ? (
-                                repo.profile_type === 'org'
-                                    ? <Building2 className="h-5 w-5 shrink-0 text-[var(--color-text-muted)]" />
-                                    : <User className="h-5 w-5 shrink-0 text-[var(--color-text-muted)]" />
-                            ) : (
-                                <Book className="h-5 w-5 shrink-0 text-[var(--color-text-muted)]" />
-                            )}
-                            {repo.name}
+                <div className="flex items-center justify-between py-3 px-6 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] rounded-tl-2xl">
+                    <div className="flex items-center gap-3 min-w-0">
+                        {repo.type === 'profile' ? (
+                            repo.profile_type === 'org'
+                                ? <Building2 className="h-5 w-5 shrink-0 text-[var(--color-text-muted)]" />
+                                : <User className="h-5 w-5 shrink-0 text-[var(--color-text-muted)]" />
+                        ) : (
+                            <Book className="h-5 w-5 shrink-0 text-[var(--color-text-muted)]" />
+                        )}
+                        <h2 className="flex items-baseline gap-1.5 font-bold truncate">
+                            <span className="text-sm font-medium text-[var(--color-text-muted)]">{repo.owner}</span>
+                            <span className="text-sm font-medium text-[var(--color-text-muted)]">/</span>
+                            <span className="text-xl text-[var(--color-text)]">{repo.name}</span>
                         </h2>
                     </div>
                     <div className="flex items-center gap-2">
@@ -260,33 +258,71 @@ export function RepoDrawer({ repoId, onClose }: RepoDrawerProps) {
     )
 }
 
+import { Skeleton } from './ui/Skeleton'
+
 function ProfileSkeleton({ drawerTheme }: { drawerTheme: string }) {
     return (
-        <div className={`flex flex-col lg:flex-row gap-8 lg:gap-10 animate-pulse ${drawerTheme === 'dark' ? 'opacity-80' : ''}`}>
-            <div className="w-full lg:w-[296px] shrink-0 flex flex-col gap-4">
-                <div className="w-[256px] h-[256px] rounded-full bg-[var(--color-surface-2)] mx-auto lg:mx-0 border border-[var(--color-border)] opacity-50" />
-                <div className="h-8 bg-[var(--color-surface-2)] rounded w-3/4 mx-auto lg:mx-0 mt-2 opacity-50" />
-                <div className="h-4 bg-[var(--color-surface-2)] rounded w-1/2 mx-auto lg:mx-0 opacity-50" />
-                <div className="h-8 bg-[var(--color-surface-2)] rounded w-full mt-4 opacity-50" />
-                <div className="space-y-3 mt-4">
-                    <div className="h-4 bg-[var(--color-surface-2)] rounded w-5/6 opacity-50" />
-                    <div className="h-4 bg-[var(--color-surface-2)] rounded w-4/6 opacity-50" />
-                    <div className="h-4 bg-[var(--color-surface-2)] rounded w-full opacity-50" />
+        <div className={`flex flex-col lg:flex-row gap-8 lg:gap-10 ${drawerTheme === 'dark' ? 'animate-pulse-slow' : ''}`}>
+            {/* Left Column Skeleton */}
+            <div className="w-full lg:w-[296px] shrink-0 flex flex-col gap-6">
+                <div className="relative w-full max-w-[296px] mx-auto lg:mx-0 pr-[40px] pb-[20px]">
+                    <Skeleton className="w-[256px] h-[256px] rounded-full mx-auto lg:mx-0 border border-[var(--color-border)] shadow-sm" />
+                </div>
+                
+                <div className="space-y-3 px-4 lg:px-0">
+                    <Skeleton className="h-8 w-3/4 mx-auto lg:mx-0" />
+                    <Skeleton className="h-6 w-1/2 mx-auto lg:mx-0 opacity-60" />
+                </div>
+
+                <Skeleton className="h-10 w-full rounded-lg" />
+                
+                <div className="space-y-4 px-4 lg:px-0 mt-2">
+                    <Skeleton className="h-4 w-full" />
+                    <div className="flex gap-2 justify-center lg:justify-start">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-4 w-20" />
+                    </div>
+                </div>
+
+                <div className="space-y-3 px-4 lg:px-0 mt-4 border-t border-[var(--color-border)] pt-6">
+                    <div className="flex gap-3 items-center">
+                        <Skeleton className="h-4 w-4 rounded-full" />
+                        <Skeleton className="h-4 w-32" />
+                    </div>
+                    <div className="flex gap-3 items-center">
+                        <Skeleton className="h-4 w-4 rounded-full" />
+                        <Skeleton className="h-4 w-40" />
+                    </div>
+                    <div className="flex gap-3 items-center">
+                        <Skeleton className="h-4 w-4 rounded-full" />
+                        <Skeleton className="h-4 w-24" />
+                    </div>
                 </div>
             </div>
+
+            {/* Right Column Skeleton */}
             <div className="flex-1 min-w-0 flex flex-col gap-8">
                 <div className="space-y-4">
-                    <div className="h-6 bg-[var(--color-surface-2)] rounded w-1/4 opacity-50" />
-                    <div className="h-32 bg-[var(--color-surface-2)] rounded-xl w-full border border-[var(--color-border)] opacity-50" />
+                    <div className="flex items-center gap-2 pb-2 border-b border-[var(--color-border)]">
+                        <Skeleton className="h-4 w-4" />
+                        <Skeleton className="h-4 w-48" />
+                    </div>
+                    <div className="space-y-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-[95%]" />
+                        <Skeleton className="h-4 w-[90%]" />
+                    </div>
+                    <Skeleton className="h-[200px] w-full rounded-xl" />
                 </div>
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                        <div className="h-6 bg-[var(--color-surface-2)] rounded w-1/4 opacity-50" />
-                        <div className="h-4 bg-[var(--color-surface-2)] rounded w-20 opacity-50" />
+
+                <div className="space-y-4 mt-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-24" />
                     </div>
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                        <div className="h-32 bg-[var(--color-surface-2)] rounded-xl border border-[var(--color-border)] opacity-50" />
-                        <div className="h-32 bg-[var(--color-surface-2)] rounded-xl border border-[var(--color-border)] opacity-50" />
+                        <Skeleton className="h-32 rounded-xl border border-[var(--color-border)]" />
+                        <Skeleton className="h-32 rounded-xl border border-[var(--color-border)]" />
                     </div>
                 </div>
             </div>

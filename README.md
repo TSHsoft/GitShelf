@@ -42,7 +42,7 @@ GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign i
 - **Bulk actions** — Tag, Move, or Delete multiple items at once from the toolbar
 
 ### 🏷️ Tagging & Filtering
-- Create color-coded **custom tags** and assign multiple tags per repo, with **multi-select filtering** to find exactly what you need.
+- Create **custom tags** with adjustable color palettes, supporting multiple tags per repo, with **multi-select filtering** to find exactly what you need.
 - **Advanced Filter Bar** — filter by Type (Repo/Profile), Favorites, Status, Tag, Language, Stars, and Recency
 - **Status tracking** — Automatically detects `active`, `archived`, `renamed`, `stale`, or `not_found`
 - **Language breakdown** — Visual distribution bar for repository languages

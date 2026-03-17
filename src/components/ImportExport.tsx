@@ -2,9 +2,8 @@ import { useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Download, Upload, Globe, Loader2, Check, Square, AlertCircle } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { GitShelfDataSchema, MAX_ITEMS_LIMIT, type Repository } from '@/types'
+import { GitShelfDataSchema, MAX_ITEMS_LIMIT, type Repository, RepoFlags } from '@/types'
 import { parseBookmarkHtml, batchFetchRepos, type BookmarkRepo } from '@/lib/bookmarks'
-import { decryptTokenAsync } from '@/lib/crypto'
 import { saveLocalData } from '@/lib/db'
 import { toast } from 'sonner'
 
@@ -175,8 +174,7 @@ export function ImportExport() {
         setImportResult(null)
         setImportProgress({ done: 0, total: parsedPaths.length, current: parsedPaths[0].id })
 
-        const rawToken = useStore.getState().githubToken
-        const token = rawToken ? await decryptTokenAsync(rawToken) : undefined
+        const token = await useStore.getState().getDecryptedToken()
         const result = await batchFetchRepos(
             parsedPaths,
             token,
@@ -185,6 +183,10 @@ export function ImportExport() {
             },
             controller.signal,
         )
+
+        if (result.rateLimited) {
+            toast.error('GitHub API rate limit reached. Import paused. Please try again in 5-10 minutes.')
+        }
 
         saveLocalData(useStore.getState().data)
         abortRef.current = null
@@ -228,8 +230,7 @@ export function ImportExport() {
         setImportStage('importing_rest')
         setImportProgress({ done: 0, total: pendingRestRepos.length, current: '' })
 
-        const rawToken = useStore.getState().githubToken
-        const token = rawToken ? await decryptTokenAsync(rawToken) : undefined
+        const token = await useStore.getState().getDecryptedToken()
 
         const { processRestFallback } = await import('@/lib/bookmarks')
 
@@ -241,6 +242,10 @@ export function ImportExport() {
             },
             controller.signal
         )
+
+        if (result.rateLimited) {
+            toast.error('GitHub API rate limit reached. Import paused. Please try again in 5-10 minutes.')
+        }
 
         abortRef.current = null
 
@@ -268,7 +273,7 @@ export function ImportExport() {
                 url: `https://github.com/${item.id}`,
                 name: name || item.id,
                 owner: owner || 'unknown',
-                description: item.title || null,
+                description: item.title || '',
                 stars: 0,
                 language: null,
                 topics: [],
@@ -287,7 +292,10 @@ export function ImportExport() {
                 tags: [],
                 added_at: item.added_at ?? Date.now(),
                 last_synced_at: Date.now(),
-                type: name ? 'repository' : 'profile'
+                type: (name ? 'repository' : 'profile') as 'repository' | 'profile',
+                is_fork: false,
+                is_mirror: false,
+                flags: RepoFlags.StatusNotFound, // It's not found as we skipped deep scan
             }
             store.addRepository(fakeRepo)
         })

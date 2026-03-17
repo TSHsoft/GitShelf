@@ -1,5 +1,6 @@
 export const ENC_PREFIX = 'enc_v1_'
 export const ENC_V2_PREFIX = 'enc_v2_'
+export const ENC_V3_PREFIX = 'enc_v3_'
 
 // We derive a working key from an environment variable or fallback constant
 // using PBKDF2 to ensure a 256-bit AES key.
@@ -7,12 +8,24 @@ const KEY_MATERIAL_SALT = 'GitShelf_Salt_2025'
 const FALLBACK_SECRET = 'GitShelf_Local_Secret_Key_2025'
 
 // Generate a cryptographic key for AES-GCM
-async function getCryptoKey(): Promise<CryptoKey> {
-    const rawSecret = import.meta.env?.VITE_CRYPTO_SECRET || FALLBACK_SECRET
+// idSalt is the GitHub User ID to ensure the key is account-specific
+async function getCryptoKey(idSalt?: string): Promise<CryptoKey> {
+    const rawSecret = import.meta.env.VITE_CRYPTO_SECRET
+
+    if (!rawSecret) {
+        if (import.meta.env.PROD || import.meta.env.MODE === 'production') {
+            throw new Error('CRITICAL: VITE_CRYPTO_SECRET is not defined. Production encryption requires a secret key.')
+        }
+    }
+
+    const secret = rawSecret || FALLBACK_SECRET
+    // Combine secret and idSalt for true account-bound security
+    const dynamicSecret = idSalt ? `${secret}:${idSalt}` : secret
+
     const enc = new TextEncoder()
     const keyMaterial = await crypto.subtle.importKey(
         'raw',
-        enc.encode(rawSecret),
+        enc.encode(dynamicSecret),
         { name: 'PBKDF2' },
         false,
         ['deriveBits', 'deriveKey']
@@ -52,11 +65,21 @@ function base64ToBuffer(base64: string): ArrayBuffer {
     return bytes.buffer
 }
 
-export async function encryptTokenAsync(token: string): Promise<string> {
+/**
+ * Encrypts a token. If idSalt is provided, it uses account-bound encryption (V3).
+ * Otherwise, it uses the legacy global secret (V2).
+ */
+export async function encryptTokenAsync(token: string, idSalt?: string): Promise<string> {
     if (!token) return ''
-    if (token.startsWith(ENC_V2_PREFIX) || token.startsWith(ENC_PREFIX)) return token // Already encrypted
+    
+    // If it's already V3 and we have a salt, don't re-encrypt unless requested
+    const isAlreadyV3 = token.startsWith(ENC_V3_PREFIX)
+    if (idSalt && isAlreadyV3) return token
+    
+    // If it's already V2 and we DON'T have a salt, keep it
+    if (!idSalt && token.startsWith(ENC_V2_PREFIX)) return token
 
-    const key = await getCryptoKey()
+    const key = await getCryptoKey(idSalt)
     const iv = crypto.getRandomValues(new Uint8Array(12)) // 96-bit IV for GCM
     const enc = new TextEncoder()
 
@@ -71,37 +94,31 @@ export async function encryptTokenAsync(token: string): Promise<string> {
     combined.set(iv, 0)
     combined.set(new Uint8Array(encryptedContent), iv.length)
 
-    return ENC_V2_PREFIX + bufferToBase64(combined.buffer)
+    const prefix = idSalt ? ENC_V3_PREFIX : ENC_V2_PREFIX
+    return prefix + bufferToBase64(combined.buffer)
 }
 
-export async function decryptTokenAsync(encryptedToken: string): Promise<string> {
+/**
+ * Decrypts a token. Attempts V3 (account-bound) if it has the prefix, 
+ * otherwise falls back to V2 (global secret).
+ */
+export async function decryptTokenAsync(encryptedToken: string, idSalt?: string): Promise<string> {
     if (!encryptedToken) return ''
 
     // Backward compatibility with older clear text tokens
-    if (!encryptedToken.startsWith(ENC_V2_PREFIX) && !encryptedToken.startsWith(ENC_PREFIX)) {
+    if (!encryptedToken.startsWith(ENC_V3_PREFIX) && 
+        !encryptedToken.startsWith(ENC_V2_PREFIX) && 
+        !encryptedToken.startsWith(ENC_PREFIX)) {
         return encryptedToken
     }
 
-    // Backward compatibility for V1 (XOR legacy)
-    if (encryptedToken.startsWith(ENC_PREFIX)) {
-        try {
-            const raw = atob(encryptedToken.slice(ENC_PREFIX.length))
-            let result = ''
-            for (let i = 0; i < raw.length; i++) {
-                const charCode = raw.charCodeAt(i) ^ FALLBACK_SECRET.charCodeAt(i % FALLBACK_SECRET.length)
-                result += String.fromCharCode(charCode)
-            }
-            return result
-        } catch (e) {
-            console.error('Failed to decrypt V1 token', e)
-            return ''
-        }
-    }
+    const isV3 = encryptedToken.startsWith(ENC_V3_PREFIX)
+    const prefix = isV3 ? ENC_V3_PREFIX : (encryptedToken.startsWith(ENC_V2_PREFIX) ? ENC_V2_PREFIX : ENC_PREFIX)
 
-    // V2 decryption (AES-GCM)
     try {
-        const key = await getCryptoKey()
-        const combined = new Uint8Array(base64ToBuffer(encryptedToken.slice(ENC_V2_PREFIX.length)))
+        // Use idSalt ONLY for V3 tokens. For V2, we must use the global secret.
+        const key = await getCryptoKey(isV3 ? idSalt : undefined)
+        const combined = new Uint8Array(base64ToBuffer(encryptedToken.slice(prefix.length)))
 
         // Extract IV and Ciphertext
         const iv = combined.slice(0, 12)
@@ -116,10 +133,14 @@ export async function decryptTokenAsync(encryptedToken: string): Promise<string>
         const dec = new TextDecoder()
         return dec.decode(decryptedContent)
     } catch (e) {
-        console.error('Failed to decrypt V2 token', e)
+        console.error(`Failed to decrypt ${isV3 ? 'V3' : 'V2/V1'} token`, e)
         return ''
     }
 }
 
-// End of crypto library
-
+/**
+ * Checks if a token is using the latest account-bound encryption (V3)
+ */
+export function isAccountBound(token: string | null): boolean {
+    return !!token && token.startsWith(ENC_V3_PREFIX)
+}

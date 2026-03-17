@@ -109,10 +109,6 @@ export function ProfileDashboard({
                     </span>
                 </div>
 
-                {/* Follow Button */}
-                <a href={`https://github.com/${profileDetails.login}`} target="_blank" rel="noopener noreferrer" className="w-full py-1.5 px-3 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-md font-semibold text-sm text-center hover:bg-[var(--color-surface)] transition-colors mt-1 block">
-                    Follow
-                </a>
 
                 {/* Bio */}
                 {profileDetails.bio && (
@@ -204,7 +200,7 @@ export function ProfileDashboard({
                 {(profileDetails.pinnedRepos.length > 0 || profileDetails.popularRepos.length > 0) && (() => {
                     const isPinned = profileDetails.pinnedRepos.length > 0;
                     const displayRepos = (isPinned ? profileDetails.pinnedRepos : profileDetails.popularRepos)
-                        .filter(r => !r.isMirror && !r.archived);
+                        .filter(r => !r.isMirror && !r.isArchived);
 
                     return (
                         <div className="space-y-3">
@@ -232,8 +228,8 @@ export function ProfileDashboard({
                                         <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)] mt-auto pt-2">
                                             {pr.language && (
                                                 <span className="flex items-center gap-1.5 shrink-0">
-                                                    <span className="w-3 h-3 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)]" style={{ backgroundColor: pr.language.color }} />
-                                                    {pr.language.name}
+                                                    <span className="w-3 h-3 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)]" style={{ backgroundColor: pr.languageColor || '#8b949e' }} />
+                                                    {pr.language}
                                                 </span>
                                             )}
                                             <span className="flex items-center gap-1 hover:text-[var(--color-accent)] shrink-0 transition-colors" title="Stars"><Star className="h-3.5 w-3.5" />{formatStars(pr.stars)}</span>
@@ -262,12 +258,12 @@ export function ProfileDashboard({
                 {/* Top Languages */}
                 {profileDetails.popularRepos && profileDetails.popularRepos.filter(r => r.language).length > 0 && (
                     <div className="space-y-3 pt-4 border-t border-[var(--color-border)]">
-                        <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider m-0">Top languages</h3>
+                        <h3 className="text-sm font-semibold text-[var(--color-text)] m-0">Top languages</h3>
                         <div className="flex items-center gap-4 flex-wrap">
-                            {Array.from(new Map(profileDetails.popularRepos.filter(r => r.language).map(r => [r.language!.name, r.language!])).values()).slice(0, 5).map(lang => (
-                                <span key={lang.name} className="flex items-center gap-1.5 text-sm text-[var(--color-text)]">
-                                    <span className="w-3 h-3 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)]" style={{ backgroundColor: lang.color }} />
-                                    {lang.name}
+                            {Array.from(new Map(profileDetails.popularRepos.filter(r => r.language).map(r => [r.language!, r.languageColor!])).entries()).slice(0, 5).map(([name, color]) => (
+                                <span key={name} className="flex items-center gap-1.5 text-sm text-[var(--color-text)]">
+                                    <span className="w-3 h-3 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)]" style={{ backgroundColor: color || '#8b949e' }} />
+                                    {name}
                                 </span>
                             ))}
                         </div>

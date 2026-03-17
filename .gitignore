@@ -8,12 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 eslint.json
 eslint_report.json
-lint.txt
-lint_out.txt
-lint_raw.json
-lint_results.txt
-lint_results.json
-errors.txt
+*.txt
+lint_*.json
 node_modules
 dist
 dist-ssr

@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { useStore } from '@/store/useStore'
 import { Octokit } from 'octokit'
-import { decryptTokenAsync } from '@/lib/crypto'
 
 export function useGithubRateLimit() {
     const token = useStore(state => state.githubToken)
@@ -17,7 +16,7 @@ export function useGithubRateLimit() {
 
         const fetchRateLimit = async () => {
             try {
-                const decryptedToken = await decryptTokenAsync(token)
+                const decryptedToken = await useStore.getState().getDecryptedToken()
                 const octokit = new Octokit({ auth: decryptedToken })
                 const { data } = await octokit.rest.rateLimit.get()
                 setRateLimitRemaining(data.rate.remaining)

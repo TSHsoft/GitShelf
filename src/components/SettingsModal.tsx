@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, Settings, KeyRound, Loader2, Cloud, CloudOff, RefreshCw } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { decryptTokenAsync } from '@/lib/crypto'
 import { getGistBackup } from '@/lib/github'
 import { GitShelfDataSchema, type GitShelfData } from '@/types'
 import { useGistSync } from '@/hooks/useGistSync'
@@ -11,6 +10,8 @@ import { ImportExport } from './ImportExport'
 import { ConfirmDialog } from './ConfirmDialog'
 import { useSignOut } from '@/hooks/useSignOut'
 import { formatRelativeTime } from '@/lib/utils'
+import { toast } from 'sonner'
+
 export function SettingsModal({ onClose }: { onClose: () => void }) {
     const {
         data, updateSettings, importData,
@@ -60,7 +61,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
 
     const handleCheckGist = async () => {
         if (!githubToken) return
-        const t = await decryptTokenAsync(githubToken)
+        const t = await useStore.getState().getDecryptedToken()
         setIsCheckingGistManual(true)
         setLastCheckedGist(null)
         try {
@@ -92,10 +93,13 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         setIsRestoring(true)
         try {
             importData(lastCheckedGist.data)
+            const repoCount = Object.keys(lastCheckedGist.data.repositories).length
+            toast.success(`Successfully imported ${repoCount} repositories from Gist backup.`)
             setShowRestoreConfirm(false)
             setLastCheckedGist(null)
         } catch (err) {
             console.error('Failed to restore:', err)
+            toast.error('Failed to restore from Gist backup.')
         } finally {
             setIsRestoring(false)
         }
@@ -267,7 +271,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                                 </div>
                             </div>
                             <p className="text-xs text-[var(--color-text-muted)] mb-4">
-                                Connect your GitHub account to enable automatic backups via Gist and increase your API rate limit for fetching repositories.
+                                Your connected GitHub account enables automatic backups via Gist and provides a higher API rate limit for fetching repositories.
                             </p>
 
                             <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 flex items-center justify-between">
@@ -347,8 +351,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                         onClose={() => setShowRestoreConfirm(false)}
                     />
                 )}
-            </div >
-            )
+            </div>
         </>
     )
 }

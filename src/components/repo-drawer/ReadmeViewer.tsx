@@ -1,9 +1,10 @@
+import React, { memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import { BookOpen, Loader2 } from 'lucide-react'
-import React, { memo } from 'react'
+import { Skeleton } from '../ui/Skeleton'
 
 interface ReadmeViewerProps {
     loading: boolean
@@ -31,17 +32,20 @@ export const ReadmeViewer = memo(function ReadmeViewer({
             </h3>
 
             {loading ? (
-                <div className="flex flex-col gap-4 animate-pulse pt-2">
-                    <div className="h-8 bg-[var(--color-surface-2)] rounded-md w-3/4 max-w-[400px]" />
-                    <div className="space-y-2.5">
-                        <div className="h-4 bg-[var(--color-surface-2)] rounded w-full" />
-                        <div className="h-4 bg-[var(--color-surface-2)] rounded w-11/12" />
-                        <div className="h-4 bg-[var(--color-surface-2)] rounded w-5/6" />
+                <div className="flex flex-col gap-6 pt-2">
+                    <div className="space-y-3">
+                        <Skeleton className="h-8 w-3/4 max-w-[400px]" />
+                        <Skeleton className="h-4 w-1/2 max-w-[200px]" />
                     </div>
-                    <div className="h-32 bg-[var(--color-surface-2)] rounded-lg w-full mt-4" />
-                    <div className="space-y-2.5 mt-4">
-                        <div className="h-4 bg-[var(--color-surface-2)] rounded w-full" />
-                        <div className="h-4 bg-[var(--color-surface-2)] rounded w-4/5" />
+                    <div className="space-y-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-[92%]" />
+                        <Skeleton className="h-4 w-[85%]" />
+                    </div>
+                    <Skeleton className="h-[200px] w-full rounded-xl" />
+                    <div className="space-y-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-[80%]" />
                     </div>
                 </div>
             ) : isErrorState ? (

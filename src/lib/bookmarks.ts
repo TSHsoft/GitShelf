@@ -5,8 +5,8 @@
  * Extracts GitHub repository URLs and returns owner/repo paths.
  */
 
-import { parseGitHubUrl } from './github'
-import type { Repository } from '@/types'
+import { parseGitHubUrl, computeRepoFlags } from './github'
+import { type Repository } from '@/types'
 
 /**
  * Extract GitHub repo paths from a Netscape Bookmark HTML string.
@@ -87,7 +87,7 @@ export async function batchFetchRepos(
     let skipped = 0
     let notFound = 0
     let errors = 0
-    const rateLimited = false
+    let rateLimited = false
     let cancelled = false
     let doneCount = 0
     const pendingRest: BookmarkRepo[] = []
@@ -158,11 +158,19 @@ export async function batchFetchRepos(
                     // Success! Move to next chunk
                     continue
                 } catch (gqlErr: unknown) {
-                    const error = gqlErr as Error & { name?: string }
+                    const error = gqlErr as Error & { name?: string; status?: number }
                     if (signal?.aborted || error.name === 'AbortError') {
                         cancelled = true
                         break
                     }
+                    
+                    const msg = error.message || ''
+                    if (error.status === 403 || msg.includes('rate limit') || msg.includes('403')) {
+                        rateLimited = true
+                        onProgress(doneCount, total, chunk[0].id, 'ratelimit')
+                        break
+                    }
+
                     console.warn(`GraphQL batch failed for chunk starting at ${i}, queueing for REST:`, error)
                     // If network fails entirely, queue the whole chunk
                     neededInChunk.forEach(item => {
@@ -269,7 +277,7 @@ export async function processRestFallback(
                         url: `https://github.com/${item.id}`,
                         name: name || item.id,
                         owner: owner || 'unknown',
-                        description: item.title || null,
+                        description: item.title || '',
                         stars: 0,
                         language: null,
                         topics: [],
@@ -288,8 +296,12 @@ export async function processRestFallback(
                         tags: [],
                         added_at: item.added_at ?? Date.now(),
                         last_synced_at: Date.now(),
-                        type: name ? 'repository' : 'profile'
+                        type: (name ? 'repository' : 'profile') as 'repository' | 'profile',
+                        is_fork: false,
+                        is_mirror: false,
+                        flags: 0,
                     }
+                    fakeRepo.flags = computeRepoFlags(fakeRepo)
                     processRepoResult(fakeRepo, item)
                     success = true
                     break

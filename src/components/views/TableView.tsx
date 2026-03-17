@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Trash2, Tag as TagIcon, Archive, AlertTriangle, RefreshCw, Star, Heart, MoreHorizontal, FolderInput, BookOpen, User, Building2, Book, Users } from 'lucide-react'
 import type { Repository, SortField, RepoStatus } from '@/types'
@@ -11,6 +11,7 @@ import { RepoDrawer } from '@/components/RepoDrawer'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { FolderSelectDialog } from '@/components/FolderSelectDialog'
 import { PortalMenu } from '@/components/PortalMenu'
+import { useDraggable } from '@dnd-kit/core'
 
 function StatusBadge({ status }: { status: RepoStatus }) {
     switch (status) {
@@ -53,10 +54,6 @@ function StatusBadge({ status }: { status: RepoStatus }) {
             )
     }
 }
-
-
-
-import { useDraggable } from '@dnd-kit/core'
 
 export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githubToken }: {
     repo: Repository;
@@ -338,14 +335,12 @@ interface TableViewProps {
     onToggleAll: (() => void) | undefined
 }
 
-export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableViewProps) {
+export const TableView = React.memo(function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableViewProps) {
     const { sortField, sortDir, setSortField, setSortDir, githubToken, activeRepoId, setActiveRepoId } = useStore()
     const parentRef = useRef<HTMLDivElement>(null)
 
-
-
     // Virtualization
-    // eslint-disable-next-line
+    // eslint-disable-next-line react-hooks/incompatible-library
     const virtualizer = useVirtualizer({
         count: repos.length,
         getScrollElement: () => parentRef.current,
@@ -379,109 +374,107 @@ export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableVi
     const someSelected = selectedIds && selectedIds.size > 0 && !allSelected
 
     return (
-        <>
-            <div className="flex flex-col flex-1 min-h-0 bg-[var(--color-bg)]">
-                <div className="flex items-center border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs font-semibold text-[var(--color-text-muted)] z-10 w-full relative">
-                    <div className="w-10 flex items-center justify-center">
-                        <input
-                            type="checkbox"
-                            checked={allSelected}
-                            ref={input => { if (input) input.indeterminate = !!someSelected }}
-                            onChange={onToggleAll}
-                            className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
-                        />
-                    </div>
-
-                    {/* Repository Name */}
-                    <button
-                        onClick={() => handleSort('name')}
-                        className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors flex-[3]`}
-                    >
-                        Repository
-                        <SortIcon field={'name'} />
-                    </button>
-
-                    <button
-                        onClick={() => handleSort('status')}
-                        className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
-                    >
-                        Status
-                        <SortIcon field={'status'} />
-                    </button>
-
-                    <button
-                        onClick={() => handleSort('stars')}
-                        className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
-                    >
-                        Stars
-                        <SortIcon field={'stars'} />
-                    </button>
-
-                    <button
-                        onClick={() => handleSort('language')}
-                        className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
-                    >
-                        Language
-                        <SortIcon field={'language'} />
-                    </button>
-
-                    <button
-                        onClick={() => handleSort('added_at')}
-                        className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
-                    >
-                        Added
-                        <SortIcon field={'added_at'} />
-                    </button>
-
-                    <button
-                        onClick={() => handleSort('last_push_at')}
-                        className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
-                    >
-                        Last Push
-                        <SortIcon field={'last_push_at'} />
-                    </button>
-
-                    <button
-                        onClick={() => handleSort('latest_release')}
-                        className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
-                    >
-                        Release
-                        <SortIcon field={'latest_release'} />
-                    </button>
-
-                    <div className="w-[112px]" /> {/* Actions spacer */}
+        <div className="flex flex-col flex-1 min-h-0 bg-[var(--color-bg)]">
+            <div className="flex items-center border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs font-semibold text-[var(--color-text-muted)] z-10 w-full relative">
+                <div className="w-10 flex items-center justify-center">
+                    <input
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={input => { if (input) input.indeterminate = !!someSelected }}
+                        onChange={onToggleAll}
+                        className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
+                    />
                 </div>
 
-                {/* Rows */}
-                <div ref={parentRef} className="flex-1 overflow-y-auto w-full relative">
-                    <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
-                        {virtualizer.getVirtualItems().map((vItem) => {
-                            const repo = repos[vItem.index]
-                            return (
-                                <div
-                                    key={vItem.key}
-                                    data-index={vItem.index}
-                                    ref={virtualizer.measureElement}
-                                    style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        transform: `translateY(${vItem.start}px)`
-                                    }}
-                                >
-                                    <TableRow
-                                        repo={repo}
-                                        onClick={() => handleRowClick(repo.id)}
-                                        selected={selectedIds?.has(repo.id) ?? false}
-                                        selectedIds={selectedIds ? Array.from(selectedIds) : []}
-                                        onToggle={() => onToggle?.(repo.id)}
-                                        githubToken={githubToken}
-                                    />
-                                </div>
-                            )
-                        })}
-                    </div>
+                {/* Repository Name */}
+                <button
+                    onClick={() => handleSort('name')}
+                    className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors flex-[3]`}
+                >
+                    Repository
+                    <SortIcon field={'name'} />
+                </button>
+
+                <button
+                    onClick={() => handleSort('status')}
+                    className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
+                >
+                    Status
+                    <SortIcon field={'status'} />
+                </button>
+
+                <button
+                    onClick={() => handleSort('stars')}
+                    className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
+                >
+                    Stars
+                    <SortIcon field={'stars'} />
+                </button>
+
+                <button
+                    onClick={() => handleSort('language')}
+                    className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
+                >
+                    Language
+                    <SortIcon field={'language'} />
+                </button>
+
+                <button
+                    onClick={() => handleSort('added_at')}
+                    className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
+                >
+                    Added
+                    <SortIcon field={'added_at'} />
+                </button>
+
+                <button
+                    onClick={() => handleSort('last_push_at')}
+                    className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
+                >
+                    Last Push
+                    <SortIcon field={'last_push_at'} />
+                </button>
+
+                <button
+                    onClick={() => handleSort('latest_release')}
+                    className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
+                >
+                    Release
+                    <SortIcon field={'latest_release'} />
+                </button>
+
+                <div className="w-[112px]" /> {/* Actions spacer */}
+            </div>
+
+            {/* Rows */}
+            <div ref={parentRef} className="flex-1 overflow-y-auto w-full relative">
+                <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
+                    {virtualizer.getVirtualItems().map((vItem) => {
+                        const repo = repos[vItem.index]
+                        return (
+                            <div
+                                key={vItem.key}
+                                data-index={vItem.index}
+                                ref={virtualizer.measureElement}
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    transform: `translateY(${vItem.start}px)`
+                                }}
+                            >
+                                <TableRow
+                                    repo={repo}
+                                    onClick={() => handleRowClick(repo.id)}
+                                    selected={selectedIds?.has(repo.id) ?? false}
+                                    selectedIds={selectedIds ? Array.from(selectedIds) : []}
+                                    onToggle={() => onToggle?.(repo.id)}
+                                    githubToken={githubToken}
+                                />
+                            </div>
+                        )
+                    })}
                 </div>
             </div>
 
@@ -492,6 +485,6 @@ export function TableView({ repos, selectedIds, onToggle, onToggleAll }: TableVi
                     onClose={() => setActiveRepoId(null)}
                 />
             )}
-        </>
+        </div>
     )
-}
+})

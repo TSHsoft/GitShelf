@@ -1,6 +1,28 @@
 import { z } from 'zod'
 
+// --- Constants & Flags ---
 export const MAX_ITEMS_LIMIT = 10000;
+
+export const RepoFlags = {
+    // --- 核心生命周期状态 (低 4 位，互斥) ---
+    STATUS_MASK: 0xF,
+    StatusActive: 0,
+    StatusDeleted: 1,
+    StatusRenamed: 2,
+    StatusNotFound: 3,
+
+    // --- 叠加特征标记 (高位，可组合) ---
+    Archived: 1 << 4,
+    Favorite: 1 << 5,
+    Private: 1 << 6,
+    Fork: 1 << 7,
+    Stale: 1 << 8,
+    HasRelease: 1 << 9,
+    Profile: 1 << 10, // 代替 type === 'profile'
+    Locked: 1 << 11,
+    Disabled: 1 << 12,
+    Empty: 1 << 13,
+} as const;
 
 // --- Zod Schemas ---
 
@@ -23,18 +45,21 @@ export const RepositorySchema = z.object({
     url: z.string(),
     name: z.string(),
     owner: z.string(),
-    description: z.string().nullable(),
+    description: z.string().catch('').default(''),
     stars: z.number(),
     language: z.string().nullable(),
     updated_at: z.string(),
     last_push_at: z.string().default(''),
     latest_release: z.string().nullable().default(null),
+    flags: z.number().default(0),
     archived: z.boolean().default(false),
     status: z.enum(['active', 'deleted', 'renamed', 'stale', 'archived', 'not_found']).default('active'),
     default_branch: z.string().default('master'), // Default to master if unknown, but sync will update it
     // New fields
     type: z.enum(['repository', 'profile']).default('repository'),
     node_id: z.string().optional(),
+    is_fork: z.boolean().default(false),
+    is_mirror: z.boolean().default(false),
     is_disabled: z.boolean().default(false),
     is_locked: z.boolean().default(false),
     is_private: z.boolean().default(false),

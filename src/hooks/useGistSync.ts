@@ -2,7 +2,6 @@ import { useEffect, useCallback, useRef } from 'react'
 import { useStore } from '@/store/useStore'
 import { loadLocalData, saveLocalData } from '@/lib/db'
 import { getGistBackup, upsertGistBackup } from '@/lib/github'
-import { decryptTokenAsync } from '@/lib/crypto'
 import type { GitShelfData } from '@/types'
 
 // Local Persistence Hook
@@ -56,7 +55,8 @@ export async function executeGistBackup() {
         return
     }
 
-    const token = await decryptTokenAsync(encToken)
+    const token = await state.getDecryptedToken()
+    if (!token) return // Should not happen if githubToken is present
     state.setGistSyncStatus('syncing')
     state.setGistSyncError(null)
 

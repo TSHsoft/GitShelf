@@ -1,17 +1,21 @@
 import type { StateCreator } from 'zustand'
 import type { GitShelfStore, AuthSlice } from '../types'
-import { encryptTokenAsync } from '@/lib/crypto'
+import { encryptTokenAsync, decryptTokenAsync, isAccountBound } from '@/lib/crypto'
 
 const getInitialToken = () => localStorage.getItem('_gs_pk_v1')
 const getInitialExpiry = () => localStorage.getItem('_gs_pk_exp')
+const getInitialId = () => {
+    const id = localStorage.getItem('_gs_pk_id')
+    return id ? parseInt(id, 10) : null
+}
 
-export const createAuthSlice: StateCreator<GitShelfStore, [], [], AuthSlice> = (set) => ({
+export const createAuthSlice: StateCreator<GitShelfStore, [], [], AuthSlice> = (set, get) => ({
     gistSyncStatus: 'idle',
     lastGistSyncTime: null,
     gistSyncError: null,
     githubToken: getInitialToken(),
     githubTokenExpiry: getInitialExpiry(),
-    userProfile: null,
+    userProfile: null, // We'll populate this on load after decryption
 
     setGistSyncStatus: (status) => set({ gistSyncStatus: status }),
     setLastGistSyncTime: (time) => set({ lastGistSyncTime: time }),
@@ -19,7 +23,11 @@ export const createAuthSlice: StateCreator<GitShelfStore, [], [], AuthSlice> = (
     setGithubToken: async (token) => {
         if (token) {
             try {
-                const encrypted = await encryptTokenAsync(token)
+                // Use profile ID or stored ID as salt if available for V3 encryption
+                const currentId = get().userProfile?.id || getInitialId()
+                const idSalt = currentId?.toString()
+                
+                const encrypted = await encryptTokenAsync(token, idSalt)
                 localStorage.setItem('_gs_pk_v1', encrypted)
                 set({ githubToken: encrypted })
             } catch (err) {
@@ -27,6 +35,7 @@ export const createAuthSlice: StateCreator<GitShelfStore, [], [], AuthSlice> = (
             }
         } else {
             localStorage.removeItem('_gs_pk_v1')
+            localStorage.removeItem('_gs_pk_id')
             set({ githubToken: null })
         }
     },
@@ -36,9 +45,35 @@ export const createAuthSlice: StateCreator<GitShelfStore, [], [], AuthSlice> = (
             set({ githubTokenExpiry: expiry })
         } else {
             localStorage.removeItem('_gs_pk_exp')
-            localStorage.removeItem('_gs_pk_exp')
             set({ githubTokenExpiry: null })
         }
     },
-    setUserProfile: (profile) => set({ userProfile: profile })
+    setUserProfile: async (profile) => {
+        set({ userProfile: profile })
+        if (profile?.id) {
+            localStorage.setItem('_gs_pk_id', profile.id.toString())
+        }
+        
+        // Automatic Migration: If we have a token but it's not yet account-bound (V3),
+        // and we now have a profile (ID), re-encrypt it to bind it to this account.
+        const state = get()
+        if (profile?.id && state.githubToken && !isAccountBound(state.githubToken)) {
+            try {
+                // For V2/V1, decryptTokenAsync doesn't need salt
+                const decrypted = await decryptTokenAsync(state.githubToken)
+                if (decrypted) {
+                    await state.setGithubToken(decrypted)
+                    console.log('Token successfully migrated to account-bound encryption (V3)')
+                }
+            } catch (err) {
+                console.error('Failed to migrate token to V3:', err)
+            }
+        }
+    },
+    getDecryptedToken: async () => {
+        const state = get()
+        if (!state.githubToken) return ''
+        const idSalt = state.userProfile?.id?.toString() || getInitialId()?.toString()
+        return decryptTokenAsync(state.githubToken, idSalt)
+    }
 })

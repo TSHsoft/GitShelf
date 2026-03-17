@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { X, Book, Star, AlertCircle, Loader2, User, GitBranch, BookPlus, Building2, Users } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { fetchRepository, formatStars } from '@/lib/github'
-import { decryptTokenAsync } from '@/lib/crypto'
 import type { Repository } from '@/types'
 import { MAX_ITEMS_LIMIT } from '@/types'
 import { TagSelector } from './TagSelector'
@@ -13,7 +12,8 @@ interface AddRepoModalProps {
 }
 
 export function AddRepoModal({ onClose }: AddRepoModalProps) {
-    const { data, addRepository, githubToken } = useStore()
+    const { data, addRepository } = useStore()
+    const githubToken = useStore(state => state.githubToken)
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -94,7 +94,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
             return
         }
         if (isRateLimited) {
-            setError('GitHub API rate limit reached. Please wait or sign in via Settings to increase your limit.')
+            setError('GitHub API rate limit reached. Please wait a few minutes before trying again.')
             return
         }
 
@@ -103,7 +103,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
         setPreview(null)
 
         try {
-            const token = githubToken ? await decryptTokenAsync(githubToken) : undefined
+            const token = await useStore.getState().getDecryptedToken()
             const repo = await fetchRepository(path, token)
             setPreview(repo)
         } catch (err: unknown) {
@@ -111,7 +111,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
             if (msg.includes('404') || msg.includes('Not Found')) {
                 setError('Repository not found. Check the URL or make sure it\'s public.')
             } else if (msg.includes('rate limit') || msg.includes('403')) {
-                setError('GitHub API rate limit reached. Sign in via Settings to increase your limit or wait a few minutes.')
+                setError('GitHub API rate limit reached. Please wait a few minutes before trying again.')
             } else {
                 setError(`Failed to fetch: ${msg}`)
             }
@@ -186,7 +186,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
                             <button
                                 type="button"
                                 onClick={handleFetch}
-                                disabled={loading || !input.trim()}
+                                disabled={loading || !input.trim() || !githubToken}
                                 className="flex items-center justify-center gap-1.5 rounded-lg bg-[var(--color-accent)] w-[75px] text-xs font-semibold text-white transition-all hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm active:scale-[0.98] h-full shrink-0"
                             >
                                 {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Fetch'}
@@ -239,7 +239,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
                                 <p className="text-xs text-[var(--color-text-subtle)] line-clamp-2 leading-relaxed">{preview.description}</p>
                             )}
 
-                            <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
+                            <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-[var(--color-text-muted)]">
                                 {preview.language && (
                                     <span className="flex items-center gap-1.5">
                                         <span className="w-2 h-2 rounded-full bg-[var(--color-accent)]" />

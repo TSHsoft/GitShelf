@@ -1,6 +1,5 @@
 import type { StateCreator } from 'zustand'
 import type { GitShelfStore, SyncSlice } from '../types'
-import { decryptTokenAsync } from '@/lib/crypto'
 import { syncRepository as syncRepoLib } from '@/lib/github'
 
 // Internal abort controller — held outside Zustand state to avoid serialization issues
@@ -45,9 +44,7 @@ export const createSyncSlice: StateCreator<GitShelfStore, [], [], SyncSlice> = (
             const repo = state.data.repositories[id]
             if (!repo) throw new Error('Repository not found')
 
-            const token = state.githubToken
-                ? await decryptTokenAsync(state.githubToken)
-                : undefined
+            const token = await state.getDecryptedToken()
 
             const updated = await syncRepoLib(repo, token)
 

@@ -11,9 +11,27 @@ import { GroupedView } from './views/GroupedView'
 import { TokenizedSearch } from './TokenizedSearch'
 import type { Repository } from '@/types'
 
+import { useShallow } from 'zustand/react/shallow'
+import type { GitShelfStore } from '@/store/types'
+
 /** Compute the sorted flat list of repos (shared across all views) */
 function useSortedRepos(): Repository[] {
-    const { data, searchQuery, searchTopics, selectedTagId, selectedFolderId, sortField, sortDir, filterLanguage, filterStars, filterUpdated, filterTag, filterTags, filterType, filterFavorite } = useStore()
+    const { data, searchQuery, searchTopics, selectedTagId, selectedFolderId, sortField, sortDir, filterLanguage, filterStars, filterUpdated, filterTag, filterTags, filterType, filterFavorite } = useStore(useShallow((state: GitShelfStore) => ({
+        data: state.data,
+        searchQuery: state.searchQuery,
+        searchTopics: state.searchTopics,
+        selectedTagId: state.selectedTagId,
+        selectedFolderId: state.selectedFolderId,
+        sortField: state.sortField,
+        sortDir: state.sortDir,
+        filterLanguage: state.filterLanguage,
+        filterStars: state.filterStars,
+        filterUpdated: state.filterUpdated,
+        filterTag: state.filterTag,
+        filterTags: state.filterTags,
+        filterType: state.filterType,
+        filterFavorite: state.filterFavorite
+    })))
 
     return useMemo(() => {
         let list = Object.values(data.repositories)
@@ -146,7 +164,36 @@ import { CustomSelect } from './CustomSelect'
 import { BulkTagDialog } from './BulkTagDialog'
 
 export const RepoList = React.memo(function RepoList() {
-    const { viewMode, groupBy, searchQuery, searchTopics, setSearchTopics, statusFilter, setStatusFilter, removeRepository, data, filterTag, filterTags, setFilterTags, filterLanguage, setFilterLanguage, filterStars, setFilterStars, filterUpdated, setFilterUpdated, filterType, setFilterType, filterFavorite, setFilterFavorite, githubToken, selectedFolderId, selectedRepoIds, setSelectedRepoIds, toggleRepoSelection, clearSelection } = useStore()
+    const { viewMode, groupBy, searchQuery, searchTopics, setSearchTopics, statusFilter, setStatusFilter, removeRepository, data, filterTag, filterTags, setFilterTags, filterLanguage, setFilterLanguage, filterStars, setFilterStars, filterUpdated, setFilterUpdated, filterType, setFilterType, filterFavorite, setFilterFavorite, githubToken, selectedFolderId, selectedRepoIds, setSelectedRepoIds, toggleRepoSelection, clearSelection } = useStore(useShallow((state: GitShelfStore) => ({
+        viewMode: state.viewMode,
+        groupBy: state.groupBy,
+        searchQuery: state.searchQuery,
+        searchTopics: state.searchTopics,
+        setSearchTopics: state.setSearchTopics,
+        statusFilter: state.statusFilter,
+        setStatusFilter: state.setStatusFilter,
+        removeRepository: state.removeRepository,
+        data: state.data,
+        filterTag: state.filterTag,
+        filterTags: state.filterTags,
+        setFilterTags: state.setFilterTags,
+        filterLanguage: state.filterLanguage,
+        setFilterLanguage: state.setFilterLanguage,
+        filterStars: state.filterStars,
+        setFilterStars: state.setFilterStars,
+        filterUpdated: state.filterUpdated,
+        setFilterUpdated: state.setFilterUpdated,
+        filterType: state.filterType,
+        setFilterType: state.setFilterType,
+        filterFavorite: state.filterFavorite,
+        setFilterFavorite: state.setFilterFavorite,
+        githubToken: state.githubToken,
+        selectedFolderId: state.selectedFolderId,
+        selectedRepoIds: state.selectedRepoIds,
+        setSelectedRepoIds: state.setSelectedRepoIds,
+        toggleRepoSelection: state.toggleRepoSelection,
+        clearSelection: state.clearSelection
+    })))
     const [showAddModal, setShowAddModal] = useState(false)
     const [showBulkTagDialog, setShowBulkTagDialog] = useState(false)
     const [showFolderSelectDialog, setShowFolderSelectDialog] = useState(false)

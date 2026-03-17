@@ -5,6 +5,7 @@ export type Theme = 'dark' | 'light'
 
 export interface DataSlice {
     data: GitShelfData
+    tagToRepos: Record<string, string[]> // Index: tagId -> [repoId, ...]
     isLoaded: boolean
     setData: (data: GitShelfData) => void
     addRepository: (repo: Repository) => void
@@ -105,14 +106,15 @@ export interface AuthSlice {
     gistSyncError: string | null
     githubToken: string | null
     githubTokenExpiry: string | null
-    userProfile: { avatarUrl: string, name: string | null, login: string } | null
+    userProfile: { avatarUrl: string, name: string | null, login: string, id: number } | null
 
     setGistSyncStatus: (status: BackupSyncStatus) => void
     setLastGistSyncTime: (time: number | null) => void
     setGistSyncError: (error: string | null) => void
     setGithubToken: (token: string | null) => void
     setGithubTokenExpiry: (expiry: string | null) => void
-    setUserProfile: (profile: { avatarUrl: string, name: string | null, login: string } | null) => void
+    setUserProfile: (profile: { avatarUrl: string, name: string | null, login: string, id: number } | null) => void
+    getDecryptedToken: () => Promise<string>
 }
 
 export type GitShelfStore = DataSlice & UISlice & SyncSlice & AuthSlice

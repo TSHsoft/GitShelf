@@ -134,7 +134,7 @@ html {
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn 0.1s ease-out;
 }
 
 @keyframes shimmer {
@@ -152,4 +152,40 @@ html {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 4px;
+}
+
+/* Performance: Extreme Drag Lock */
+.is-dragging .repo-card,
+.is-dragging .group-header,
+.is-dragging [data-droppable="true"] {
+  transition: none !important;
+  user-select: none !important;
+}
+
+/* Explicitly disable mouse interaction for the repo list during drag */
+.is-dragging main, 
+.is-dragging .repo-card,
+.is-dragging .group-header {
+  pointer-events: none !important;
+  contain: paint layout; /* Isolation */
+}
+
+/* Drag performance: isolate sidebar from main for separate repaint layers */
+.is-dragging aside {
+  pointer-events: auto !important;
+  contain: layout style; /* isolate layout recalculation */
+  will-change: transform; /* promote to gpu layer */
+}
+
+/* CSS-driven folder hover highlight during drag - no React re-render needed */
+.is-dragging [data-folder-droppable="true"]:has([data-over="true"]),
+.is-dragging [data-folder-droppable="true"][data-over="true"] {
+  border-color: var(--color-accent) !important;
+  background-color: color-mix(in srgb, var(--color-accent) 8%, transparent) !important;
+}
+
+/* Isolate Repository Cards for faster repaints */
+.repo-card {
+  contain: paint layout;
+  will-change: transform, opacity;
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { ChevronRight, Tag as TagIcon, Code2, AlertTriangle, Layers, Activity, Archive, Trash2, Clock, RefreshCw, Calendar } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Repository, ViewMode, GroupBy } from '@/types'
@@ -8,6 +8,7 @@ import { SortableCard } from './CardView'
 import { TableRow } from './TableView'
 import { COLUMNS } from './columns'
 import { RepoDrawer } from '@/components/RepoDrawer'
+import { useVirtualizer } from '@tanstack/react-virtual'
 
 interface Group {
     key: string
@@ -17,7 +18,6 @@ interface Group {
 }
 
 function buildGroups(repos: Repository[], groupBy: GroupBy, tags: Record<string, { id: string; name: string; color: string }>): Group[] {
-    // Sort repos within each group by Name
     const sortByName = (g: Group) => {
         g.repos.sort((a, b) => a.name.localeCompare(b.name))
         return g
@@ -26,22 +26,17 @@ function buildGroups(repos: Repository[], groupBy: GroupBy, tags: Record<string,
     if (groupBy === 'tag') {
         const tagGroups: Record<string, Group> = {}
         const untagged: Repository[] = []
-
         for (const repo of repos) {
-            if (repo.tags.length === 0) {
-                untagged.push(repo)
-            } else {
+            if (repo.tags.length === 0) untagged.push(repo)
+            else {
                 for (const tagId of repo.tags) {
                     const tag = tags[tagId]
                     if (!tag) continue
-                    if (!tagGroups[tagId]) {
-                        tagGroups[tagId] = { key: tagId, label: tag.name, color: tag.color, repos: [] }
-                    }
+                    if (!tagGroups[tagId]) tagGroups[tagId] = { key: tagId, label: tag.name, color: tag.color, repos: [] }
                     tagGroups[tagId].repos.push(repo)
                 }
             }
         }
-
         const result = Object.values(tagGroups).sort((a, b) => a.label.localeCompare(b.label)).map(sortByName)
         if (untagged.length > 0) result.push(sortByName({ key: '__untagged__', label: 'Untagged', repos: untagged }))
         return result
@@ -51,14 +46,10 @@ function buildGroups(repos: Repository[], groupBy: GroupBy, tags: Record<string,
         const langGroups: Record<string, Group> = {}
         for (const repo of repos) {
             const lang = repo.language ?? 'Unknown'
-            if (!langGroups[lang]) {
-                langGroups[lang] = { key: lang, label: lang, color: getLanguageColor(repo.language), repos: [] }
-            }
+            if (!langGroups[lang]) langGroups[lang] = { key: lang, label: lang, color: getLanguageColor(repo.language), repos: [] }
             langGroups[lang].repos.push(repo)
         }
-        return Object.values(langGroups)
-            .sort((a, b) => b.repos.length - a.repos.length)
-            .map(sortByName)
+        return Object.values(langGroups).sort((a, b) => b.repos.length - a.repos.length).map(sortByName)
     }
 
     if (groupBy === 'status') {
@@ -66,13 +57,10 @@ function buildGroups(repos: Repository[], groupBy: GroupBy, tags: Record<string,
         const statusGroups: Record<string, Group> = {}
         for (const repo of repos) {
             const s = repo.status
-            if (!statusGroups[s]) {
-                const label = s === 'not_found' ? 'Not Found' : s.charAt(0).toUpperCase() + s.slice(1)
-                statusGroups[s] = { key: s, label, repos: [] }
-            }
+            if (!statusGroups[s]) statusGroups[s] = { key: s, label: s === 'not_found' ? 'Not Found' : s.charAt(0).toUpperCase() + s.slice(1), repos: [] }
             statusGroups[s].repos.push(repo)
         }
-        return order.filter((s) => statusGroups[s]).map((s) => sortByName(statusGroups[s]))
+        return order.filter(s => statusGroups[s]).map(s => sortByName(statusGroups[s]))
     }
 
     if (groupBy === 'added_at') {
@@ -82,20 +70,11 @@ function buildGroups(repos: Repository[], groupBy: GroupBy, tags: Record<string,
             const year = date.getFullYear()
             const month = date.getMonth()
             const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(date)
-            // Use YYYY-MM as a sortable key
             const sortKey = `${year}-${String(month).padStart(2, '0')}`
-            if (!monthGroups[sortKey]) {
-                monthGroups[sortKey] = {
-                    key: sortKey,
-                    label: `${monthName} ${year}`,
-                    repos: []
-                }
-            }
+            if (!monthGroups[sortKey]) monthGroups[sortKey] = { key: sortKey, label: `${monthName} ${year}`, repos: [] }
             monthGroups[sortKey].repos.push(repo)
         }
-        return Object.values(monthGroups)
-            .sort((a, b) => b.key.localeCompare(a.key))
-            .map(sortByName)
+        return Object.values(monthGroups).sort((a, b) => b.key.localeCompare(a.key)).map(sortByName)
     }
 
     return [{ key: 'all', label: 'All', repos: [...repos].sort((a, b) => a.name.localeCompare(b.name)) }]
@@ -108,13 +87,10 @@ function GroupHeader({ group, groupBy, collapsed, onToggle }: {
     onToggle: () => void
 }) {
     let Icon = Layers
-    if (groupBy === 'tag') {
-        Icon = TagIcon
-    } else if (groupBy === 'language') {
-        Icon = Code2
-    } else if (groupBy === 'added_at') {
-        Icon = Calendar
-    } else if (groupBy === 'status') {
+    if (groupBy === 'tag') Icon = TagIcon
+    else if (groupBy === 'language') Icon = Code2
+    else if (groupBy === 'added_at') Icon = Calendar
+    else if (groupBy === 'status') {
         switch (group.key) {
             case 'active': Icon = Activity; break;
             case 'archived': Icon = Archive; break;
@@ -128,11 +104,9 @@ function GroupHeader({ group, groupBy, collapsed, onToggle }: {
     return (
         <button
             onClick={onToggle}
-            className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-2)] sticky top-0 z-10 bg-[var(--color-bg)] border-b border-[var(--color-border)]"
+            className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-2)] bg-[var(--color-bg)] border-b border-[var(--color-border)]"
         >
-            <ChevronRight
-                className={`h-4 w-4 text-[var(--color-text-muted)] transition-transform shrink-0 ${collapsed ? '' : 'rotate-90'}`}
-            />
+            <ChevronRight className={`h-4 w-4 text-[var(--color-text-muted)] transition-transform shrink-0 ${collapsed ? '' : 'rotate-90'}`} />
             {group.color ? (
                 <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
             ) : (
@@ -154,7 +128,13 @@ interface GroupedViewProps {
     onToggle: ((repoId: string) => void) | undefined
 }
 
-export function GroupedView({ repos, viewMode, groupBy, selectedIds, onToggle }: GroupedViewProps) {
+interface FlattenedEntry {
+    type: 'header' | 'row'
+    group: Group
+    repos?: Repository[] // For type: row
+}
+
+export const GroupedView = React.memo(function GroupedView({ repos, viewMode, groupBy, selectedIds, onToggle }: GroupedViewProps) {
     const { tags, githubToken, activeRepoId, setActiveRepoId } = useStore(useShallow(state => ({
         tags: state.data.tags,
         githubToken: state.githubToken,
@@ -162,83 +142,120 @@ export function GroupedView({ repos, viewMode, groupBy, selectedIds, onToggle }:
         setActiveRepoId: state.setActiveRepoId
     })))
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+    const parentRef = useRef<HTMLDivElement>(null)
+    const [columns, setColumns] = useState(2)
 
-    const groups = useMemo(() => {
-        return buildGroups(repos, groupBy, tags)
-    }, [repos, groupBy, tags])
+    useEffect(() => {
+        if (viewMode !== 'card') return
+        const updateColumns = () => setColumns(window.innerWidth >= 1280 ? 3 : 2)
+        updateColumns()
+        window.addEventListener('resize', updateColumns)
+        return () => window.removeEventListener('resize', updateColumns)
+    }, [viewMode])
 
-    const toggle = (key: string) =>
+    const groups = useMemo(() => buildGroups(repos, groupBy, tags), [repos, groupBy, tags])
+
+    const entries = useMemo(() => {
+        const list: FlattenedEntry[] = []
+        groups.forEach(group => {
+            list.push({ type: 'header', group })
+            if (!(collapsed[group.key] ?? true)) {
+                const groupRepos = group.repos
+                const chunkSize = viewMode === 'card' ? columns : 1
+                for (let i = 0; i < groupRepos.length; i += chunkSize) {
+                    list.push({
+                        type: 'row',
+                        group,
+                        repos: groupRepos.slice(i, i + chunkSize)
+                    })
+                }
+            }
+        })
+        return list
+    }, [groups, collapsed, viewMode, columns])
+
+    // eslint-disable-next-line react-hooks/incompatible-library
+    const virtualizer = useVirtualizer({
+        count: entries.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: (index) => entries[index].type === 'header' ? 44 : (viewMode === 'card' ? 200 : 64),
+        overscan: 10,
+    })
+
+    const toggle = (key: string) => {
         setCollapsed((prev) => ({ ...prev, [key]: !(prev[key] ?? true) }))
+    }
 
     const handleRowClick = (repoId: string) => {
         if (!githubToken) return
         setActiveRepoId(repoId)
     }
 
+    const selectedIdsArray: string[] = useMemo(() => selectedIds ? Array.from(selectedIds) : [], [selectedIds])
+
     return (
         <div className="flex flex-col h-full overflow-hidden">
-            {/* Sticky Header for Table/List View */}
             {(viewMode === 'table' || viewMode === 'list') && (
                 <div className="flex items-center border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs font-semibold text-[var(--color-text-muted)] shrink-0 z-10 w-full">
                     {COLUMNS.map((col, i) => (
-                        <div key={i} className={`flex items-center gap-1 ${col.width}`}>
-                            {col.label}
-                        </div>
+                        <div key={i} className={`flex items-center gap-1 ${col.width}`}>{col.label}</div>
                     ))}
-                    <div className="w-24" /> {/* Actions spacer */}
+                    <div className="w-24" />
                 </div>
             )}
 
-            <div className="flex-1 overflow-y-auto">
-                {groups.map((group) => {
-                    const isCollapsed = collapsed[group.key] ?? true
-
-                    return (
-                        <div key={group.key} className="border-b border-[var(--color-border)]/30 last:border-0">
-                            <GroupHeader
-                                group={group}
-                                groupBy={groupBy}
-                                collapsed={isCollapsed}
-                                onToggle={() => toggle(group.key)}
-                            />
-
-                            {!isCollapsed && (
-                                <div className="animate-fade-in">
-                                    {viewMode === 'card' && (
-                                        <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 p-4">
-                                            {group.repos.map((repo) => (
+            <div ref={parentRef} className="flex-1 overflow-y-auto">
+                <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+                    {virtualizer.getVirtualItems().map((virtualItem) => {
+                        const entry = entries[virtualItem.index]
+                        return (
+                            <div
+                                key={`${entry.group.key}-${virtualItem.index}`}
+                                data-index={virtualItem.index}
+                                ref={virtualizer.measureElement}
+                                style={{
+                                    position: 'absolute',
+                                    top: 0, left: 0, width: '100%',
+                                    transform: `translateY(${virtualItem.start}px)`,
+                                }}
+                            >
+                                {entry.type === 'header' ? (
+                                    <GroupHeader
+                                        group={entry.group}
+                                        groupBy={groupBy}
+                                        collapsed={collapsed[entry.group.key] ?? true}
+                                        onToggle={() => toggle(entry.group.key)}
+                                    />
+                                ) : (
+                                    <div className={viewMode === 'card' ? 'grid grid-cols-2 xl:grid-cols-3 gap-3 p-4 pt-0' : ''}>
+                                        {entry.repos?.map(repo => (
+                                            viewMode === 'card' ? (
                                                 <SortableCard
                                                     key={repo.id}
                                                     repo={repo}
                                                     selected={selectedIds?.has(repo.id) ?? false}
-                                                    selectedIds={selectedIds ? Array.from(selectedIds) : []}
+                                                    selectedIds={selectedIdsArray}
                                                 />
-                                            ))}
-                                        </div>
-                                    )}
-                                    {(viewMode === 'table' || viewMode === 'list') && (
-                                        <div>
-                                            {group.repos.map((repo) => (
+                                            ) : (
                                                 <TableRow
                                                     key={repo.id}
                                                     repo={repo}
                                                     selected={selectedIds?.has(repo.id) ?? false}
-                                                    selectedIds={selectedIds ? Array.from(selectedIds) : []}
+                                                    selectedIds={selectedIdsArray}
                                                     onClick={() => handleRowClick(repo.id)}
                                                     onToggle={() => onToggle?.(repo.id)}
                                                     githubToken={githubToken}
                                                 />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )
-                })}
+                                            )
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    })}
+                </div>
             </div>
 
-            {/* Drawer */}
             {activeRepoId && (
                 <RepoDrawer
                     repoId={activeRepoId}
@@ -247,4 +264,4 @@ export function GroupedView({ repos, viewMode, groupBy, selectedIds, onToggle }:
             )}
         </div>
     )
-}
+})
