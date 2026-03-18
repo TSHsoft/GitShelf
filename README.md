@@ -179,42 +179,11 @@ You can deploy the GitShelf frontend to any static hosting provider. Here is how
     *   `VITE_CRYPTO_SECRET` (Use the 32-byte hex string generated earlier)
 3.  **Deploy**: Vercel will automatically build and deploy your app.
 4.  **Note**: If you update your environment variables later, you must **Redeploy** the latest deployment in the Vercel dashboard for the changes to take effect.
-
-
 ---
 
-## 🤝 Contributing
+## 💬 Feedback & Issues
 
-
-
-Contributions are welcome! Here's how to get started:
-
-1. **Fork** the repository
-2. **Create a branch** for your feature or fix:
-   ```bash
-   git checkout -b feat/your-feature-name
-   ```
-3. **Commit** your changes with a clear message:
-   ```bash
-   git commit -m "feat: add keyboard shortcuts"
-   ```
-4. **Push** to your fork and open a **Pull Request**
-
-Please make sure your code:
-- Passes `npm run lint`
-- Follows the existing TypeScript + Zod schema patterns
-- Does not introduce new external dependencies without discussion
-
----
-
-## 🐛 Reporting Issues
-
-Found a bug? Please [open an issue](https://github.com/TSHsoft/GitShelf/issues) and include:
-- Steps to reproduce
-- Expected vs. actual behaviour
-- Browser and OS version
-
----
+Found a bug or have a suggestion? Please [open an issue](https://github.com/TSHsoft/GitShelf/issues). We appreciate your help in making GitShelf better!
 
 ## 📄 License
 
