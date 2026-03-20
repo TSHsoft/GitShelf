@@ -33,6 +33,14 @@ async function getDB() {
 
 export async function saveLocalData(data: GitShelfData) {
     const db = await getDB()
+    
+    // Safety check: Avoid overwriting newer data in DB using timestamps
+    const existing = await db.get(DATA_STORE, DATA_KEY)
+    if (existing && existing.last_modified > data.last_modified) {
+        console.warn('[DB] Protection: Refusing to overwrite newer data in database')
+        throw new Error('CONSISTENCY_ERROR: Database has newer data')
+    }
+    
     await db.put(DATA_STORE, data, DATA_KEY)
 }
 

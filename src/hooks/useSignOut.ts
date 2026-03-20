@@ -18,8 +18,15 @@ export function useSignOut() {
         }
 
         try {
-            setSigningOutStatus('Backing up your bookmarks...')
-            await executeGistBackup()
+            const repositories = useStore.getState().data.repositories;
+            const repoCount = Object.keys(repositories).length;
+            
+            if (repoCount > 0) {
+                setSigningOutStatus('Backing up your bookmarks...')
+                await executeGistBackup()
+            } else {
+                console.log('[SignOut] Skipping backup because shelf is empty')
+            }
 
         } catch (e) {
             console.warn('Backup before sign out failed, proceeding anyway', e)
@@ -31,6 +38,19 @@ export function useSignOut() {
         await setGithubToken(null)
         setGithubTokenExpiry(null)
         setUserProfile(null)
+
+        // --- NEW: Sync logout to extension ---
+        const extId = import.meta.env.VITE_EXTENSION_ID;
+        const chrome = (window as any).chrome;
+        if (typeof chrome !== 'undefined' && chrome.runtime && extId) {
+            try {
+                chrome.runtime.sendMessage(extId, { type: 'APP_SIGN_OUT' });
+                console.log('[SignOut] Sign out message sent to extension');
+            } catch (err) {
+                console.warn('[SignOut] Failed to message extension:', err);
+            }
+        }
+
         setSigningOutStatus(null)
         // App.tsx renders LoginPage when githubToken is null
     }

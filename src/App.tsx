@@ -249,7 +249,6 @@ function AppContent() {
             }
 
             if (type === 'EXT_SAVE_REPO') {
-                console.log('[App] Received EXT_SAVE_REPO from message (offscreen)');
                 try {
                     const parsed = RepositorySchema.parse(event.data.payload);
                     useStore.getState().addRepository(parsed);
@@ -261,8 +260,6 @@ function AppContent() {
 
             if (type === 'EXT_SAVE_BY_PATH') {
                 const { path } = event.data.payload;
-                console.log('[App] Received EXT_SAVE_BY_PATH from extension:', path);
-                
                 const handleAsyncSave = async () => {
                     try {
                         const { fetchRepositoryGraphQL } = await import('@/lib/github');
@@ -277,6 +274,19 @@ function AppContent() {
                 };
                 
                 handleAsyncSave();
+            }
+        };
+
+        // Cross-tab sync listener
+        const bc = new BroadcastChannel('gitshelf-sync');
+        bc.onmessage = async (event) => {
+            if (event.data.type === 'DATA_UPDATED') {
+                console.log('[App] Received cross-tab data update signal');
+                const { loadLocalData } = await import('@/lib/db');
+                const stored = await loadLocalData();
+                if (stored) {
+                    useStore.getState().setData(stored);
+                }
             }
         };
 
@@ -327,6 +337,7 @@ function AppContent() {
         
         return () => {
             window.removeEventListener('message', handleExtensionMessage);
+            bc.close();
             delete window.__GitShelfCheckRepo__;
             delete window.__GitShelfSaveRepo__;
             delete window.__GitShelfSaveRepoPath__;

@@ -1,127 +1,15 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>GitShelf Extension Bridge</title>
-</head>
-<body>
-<script>
-    // SECURITY: Prevent direct browser access to the bridge (Redirect to App)
-    if (window.top === window.self) {
-        window.location.replace('/');
-    }
-
-    // Native IndexedDB logic for maximum speed (No React, No Libraries)
-    const DB_NAME = 'gitshelf-db';
-    const DB_VERSION = 2;
-
-    window.addEventListener('message', (event) => {
-        // SECURITY: Strict whitelist for GitShelf Extension IDs (Resolved from .env at build time)
-        const ALLOWED_EXTENSION_IDS = [
-          '%VITE_EXTENSION_ID%'
-        ].filter(id => id && !id.startsWith('%')); // Filter out if placeholder not replaced
-
-        const isExtension = event.origin.startsWith('chrome-extension://') || event.origin.startsWith('extension://');
-        if (!isExtension) {
-          console.warn('[GitShelf Bridge] Ignored message from unauthorized origin:', event.origin);
-          return;
-        }
-
-        const extId = event.origin.split('://')[1]?.split('/')[0];
-        if (ALLOWED_EXTENSION_IDS.length > 0 && !ALLOWED_EXTENSION_IDS.includes(extId)) {
-          console.warn('[GitShelf Bridge] Security Block: Unauthorized extension ID tried to connect:', extId);
-          return;
-        }
-
-        const { type, payload } = event.data;
-        
-        if (type === 'EXT_SAVE_REPO') {
-            saveToIDB(payload)
-                .then(() => window.parent.postMessage({ type: 'EXT_SAVE_SUCCESS' }, '*'))
-                .catch(err => window.parent.postMessage({ type: 'EXT_SAVE_FAILURE', error: err.message }, '*'));
-        }
-
-        if (type === 'EXT_CHECK_REPO') {
-             checkRepo(payload)
-                 .then(exists => window.parent.postMessage({ type: 'EXT_CHECK_RESULT', exists }, '*'))
-                 .catch(() => window.parent.postMessage({ type: 'EXT_CHECK_RESULT', exists: false }, '*'));
-        }
-
-        if (type === 'EXT_GET_IDS') {
-             getRepoIds()
-                 .then(ids => window.parent.postMessage({ type: 'EXT_IDS_RESULT', ids }, '*'))
-                 .catch(() => window.parent.postMessage({ type: 'EXT_IDS_RESULT', ids: [] }, '*'));
-        }
-    });
-
-    function saveToIDB(repoData) {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
-            request.onerror = () => reject(new Error('Failed to open IndexedDB'));
-            
-            request.onsuccess = (event) => {
-                const db = event.target.result;
-                const tx = db.transaction(['data'], 'readwrite');
-                const store = tx.objectStore('data');
-                
-                const getReq = store.get('main');
-                getReq.onsuccess = () => {
-                    const data = getReq.result;
-                    if (!data) {
-                        reject(new Error('Main data not found. Please open App.'));
-                        return;
-                    }
-                    
-                    if (!data.repositories) data.repositories = {};
-                    data.repositories[repoData.id] = repoData;
-                    data.last_modified = Date.now();
-                    
-                    const putReq = store.put(data, 'main');
-                    putReq.onsuccess = () => resolve();
-                    putReq.onerror = () => reject(new Error('Failed to write to IDB'));
-                };
-            };
-        });
-    }
-
-    function checkRepo(id) {
-        return new Promise((resolve) => {
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
-            request.onsuccess = (event) => {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains('data')) return resolve(false);
-                const tx = db.transaction(['data'], 'readonly');
-                const store = tx.objectStore('data');
-                const getReq = store.get('main');
-                getReq.onsuccess = () => {
-                    const data = getReq.result;
-                    if (!data || !data.repositories) return resolve(false);
-                    resolve(!!data.repositories[id] || Object.values(data.repositories).some(r => r.id === id));
-                };
-                request.onerror = () => resolve(false);
-            };
-            request.onerror = () => resolve(false);
-        });
-    }
-
-    function getRepoIds() {
-        return new Promise((resolve) => {
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
-            request.onsuccess = (event) => {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains('data')) return resolve([]);
-                const tx = db.transaction(['data'], 'readonly');
-                const store = tx.objectStore('data');
-                const getReq = store.get('main');
-                getReq.onsuccess = () => {
-                    const data = getReq.result;
-                    if (!data || !data.repositories) return resolve([]);
-                    resolve(Object.keys(data.repositories));
-                };
-            };
-        });
-    }
-
-    console.log('[GitShelf Bridge] Ready with Environment Verification');
-</script>
-</body>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitShelf Bridge</title>
+  </head>
+  <body>
+    <!-- 
+      This is the Vite-powered Bridge. 
+      It shares the SAME logic as the main App by importing src/bridge.ts 
+    -->
+    <script type="module" src="/src/bridge.ts"></script>
+  </body>
 </html>

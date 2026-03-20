@@ -12,6 +12,10 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        bridge: path.resolve(__dirname, 'ext-bridge.html'),
+      },
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {

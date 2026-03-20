@@ -13,13 +13,17 @@ export function useLocalPersistence() {
         const init = async () => {
             try {
                 const stored = await loadLocalData()
-                if (mounted && stored) {
+                if (!mounted) return
+                
+                if (stored) {
+                    console.log('[Init] Local data loaded successfully')
                     setData(stored)
-                } else if (mounted) {
+                } else {
+                    console.log('[Init] No local data found, initializing fresh')
                     setLoaded(true)
                 }
             } catch (err) {
-                console.error('Failed to load local data:', err)
+                console.error('[Init] Failed to load local data:', err)
                 if (mounted) setLoaded(true)
             }
         }
@@ -35,7 +39,13 @@ export function useAutoSave() {
     const scheduleSave = useCallback((data: GitShelfData) => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current)
         timeoutRef.current = setTimeout(() => {
-            saveLocalData(data).catch(console.error)
+            saveLocalData(data).catch(err => {
+                if (err.message && err.message.includes('CONSISTENCY_ERROR')) {
+                    console.debug('[AutoSave] Skip: DB is newer than current memory state')
+                } else {
+                    console.error('[AutoSave] Failed:', err)
+                }
+            })
         }, 1000)
     }, [])
 
