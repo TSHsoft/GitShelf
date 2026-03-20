@@ -41,7 +41,7 @@ export function useSignOut() {
 
         // --- NEW: Sync logout to extension ---
         const extId = import.meta.env.VITE_EXTENSION_ID;
-        const chrome = (window as any).chrome;
+        const chrome = (window as Window & { chrome?: { runtime?: { sendMessage: (id: string, msg: unknown) => void } } }).chrome;
         if (typeof chrome !== 'undefined' && chrome.runtime && extId) {
             try {
                 chrome.runtime.sendMessage(extId, { type: 'APP_SIGN_OUT' });

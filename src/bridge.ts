@@ -53,9 +53,10 @@ window.addEventListener('message', async (event) => {
             const auth = getAppAuth();
             window.parent.postMessage({ type: 'EXT_AUTH_RESULT', auth }, '*');
         }
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error(`[Bridge] Error for action ${type}:`, err);
-        window.parent.postMessage({ type: 'EXT_SAVE_FAILURE', error: err.message }, '*');
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        window.parent.postMessage({ type: 'EXT_SAVE_FAILURE', error: errorMessage }, '*');
     }
 });
 
@@ -131,7 +132,7 @@ function getAppAuth() {
     let userProfile = null;
     try {
         userProfile = profileJson ? JSON.parse(profileJson) : null;
-    } catch (e) {
+    } catch (_e) {
         console.warn('[Bridge] Failed to parse cached profile');
     }
     

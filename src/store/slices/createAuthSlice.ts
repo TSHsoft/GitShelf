@@ -13,7 +13,7 @@ const getInitialProfile = () => {
     const profile = localStorage.getItem('_gs_up_v1')
     try {
         return profile ? JSON.parse(profile) : null
-    } catch (e) {
+    } catch {
         return null
     }
 }
