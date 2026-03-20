@@ -9,13 +9,22 @@ const getInitialId = () => {
     return id ? parseInt(id, 10) : null
 }
 
+const getInitialProfile = () => {
+    const profile = localStorage.getItem('_gs_up_v1')
+    try {
+        return profile ? JSON.parse(profile) : null
+    } catch (e) {
+        return null
+    }
+}
+
 export const createAuthSlice: StateCreator<GitShelfStore, [], [], AuthSlice> = (set, get) => ({
     gistSyncStatus: 'idle',
     lastGistSyncTime: null,
     gistSyncError: null,
     githubToken: getInitialToken(),
     githubTokenExpiry: getInitialExpiry(),
-    userProfile: null, // We'll populate this on load after decryption
+    userProfile: getInitialProfile(), // Persisted user profile
 
     setGistSyncStatus: (status) => set({ gistSyncStatus: status }),
     setLastGistSyncTime: (time) => set({ lastGistSyncTime: time }),
@@ -50,8 +59,14 @@ export const createAuthSlice: StateCreator<GitShelfStore, [], [], AuthSlice> = (
     },
     setUserProfile: async (profile) => {
         set({ userProfile: profile })
-        if (profile?.id) {
-            localStorage.setItem('_gs_pk_id', profile.id.toString())
+        if (profile) {
+            localStorage.setItem('_gs_up_v1', JSON.stringify(profile))
+            if (profile.id) {
+                localStorage.setItem('_gs_pk_id', profile.id.toString())
+            }
+        } else {
+            localStorage.removeItem('_gs_up_v1')
+            localStorage.removeItem('_gs_pk_id')
         }
         
         // Automatic Migration: If we have a token but it's not yet account-bound (V3),

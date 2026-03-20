@@ -124,12 +124,21 @@ function notifyApp() {
 function getAppAuth() {
     const token = localStorage.getItem('_gs_pk_v1');
     const id = localStorage.getItem('_gs_pk_id');
+    const profileJson = localStorage.getItem('_gs_up_v1');
     
     if (!token) return null;
+
+    let userProfile = null;
+    try {
+        userProfile = profileJson ? JSON.parse(profileJson) : null;
+    } catch (e) {
+        console.warn('[Bridge] Failed to parse cached profile');
+    }
     
     return {
         githubToken: token,
-        profileId: id ? parseInt(id, 10) : null
+        profileId: id ? parseInt(id, 10) : null,
+        userProfile
     };
 }
 
