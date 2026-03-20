@@ -17,6 +17,16 @@
 
 ---
 
+## 🧩 Browser Extension
+
+GitShelf is accompanied by a **Chromium-based browser extension** (Edge, Chrome, etc.) that allows you to capture repositories and profiles directly from the GitHub interface with a single click. It synchronizes securely with your web session and works independently.
+
+- **One-click Capture**: Save any repository or user profile without leaving your current tab.
+- **Standalone Sync**: Background synchronization for up-to-date sessions.
+- **Source Code**: [GitShelf Extensions](https://github.com/TSHsoft/GitShelf-Extensions)
+
+---
+
 ## ✨ What is GitShelf?
 
 GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign in with your GitHub account, add any public repo you care about, tag and filter them, and keep your collection in sync — all stored privately in your own GitHub Gist as JSON. No server. No database. No tracking.

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Book, Star, AlertCircle, Loader2, User, GitBranch, BookPlus, Building2, Users } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { fetchRepository, formatStars } from '@/lib/github'
+import { fetchRepositoryGraphQL, formatStars } from '@/lib/github'
 import type { Repository } from '@/types'
 import { MAX_ITEMS_LIMIT } from '@/types'
 import { TagSelector } from './TagSelector'
@@ -104,7 +104,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
 
         try {
             const token = await useStore.getState().getDecryptedToken()
-            const repo = await fetchRepository(path, token)
+            const repo = await fetchRepositoryGraphQL(path, token)
             setPreview(repo)
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err)
@@ -207,7 +207,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
 
                     {/* Preview Area */}
                     {preview && (
-                        <div className="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-5 animate-fade-in flex flex-col gap-4">
+                        <div className="mt-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 animate-fade-in flex flex-col gap-3">
                             <div className="flex items-start justify-between gap-3 min-w-0">
                                 <div className="min-w-0 flex-1">
                                     <p className="text-sm text-[var(--color-accent)] font-bold py-0.5 truncate">{preview.owner}</p>
@@ -235,8 +235,16 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
                                 </div>
                             </div>
 
-                            {preview.description && (
-                                <p className="text-xs text-[var(--color-text-subtle)] line-clamp-2 leading-relaxed">{preview.description}</p>
+                            {preview.description ? (
+                                <p className="text-xs text-[var(--color-text-subtle)] line-clamp-2 leading-normal">
+                                    {preview.description}
+                                </p>
+                            ) : (
+                                <p className="text-xs text-[var(--color-text-subtle)]/50 italic leading-normal">
+                                    {preview.type === 'profile' 
+                                        ? (preview.profile_type === 'org' ? 'GitHub Organization profile' : 'GitHub User profile')
+                                        : 'No description provided for this repository.'}
+                                </p>
                             )}
 
                             <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-[var(--color-text-muted)]">

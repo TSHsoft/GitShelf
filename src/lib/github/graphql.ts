@@ -152,9 +152,9 @@ function parseGraphQLSyncResponse(
 
         const status = calculateRepoStatus(
             existing.id,
-            data.nameWithOwner,
-            data.isArchived,
-            data.pushedAt,
+            data.nameWithOwner ?? existing.id,
+            data.isArchived ?? false,
+            data.pushedAt ?? existing.last_push_at,
             existing.last_push_at
         )
 
@@ -163,32 +163,32 @@ function parseGraphQLSyncResponse(
 
         const newRepoData: Repository = {
             ...existing,
-            id: data.nameWithOwner,
+            id: data.nameWithOwner ?? existing.id,
             node_id: data.id,
             url: data.url,
             name: data.name,
-            owner: data.owner.login,
+            owner: data.owner?.login ?? existing.owner,
             description: data.description ?? '',
-            stars: data.stargazerCount,
+            stars: data.stargazerCount ?? existing.stars,
             prev_stars: existing.stars,
             language: data.primaryLanguage?.name ?? null,
             languages,
             topics,
             updated_at: data.updatedAt,
-            last_push_at: data.pushedAt,
+            last_push_at: data.pushedAt ?? existing.last_push_at,
             latest_release,
             has_new_release,
-            archived: data.isArchived,
-            is_disabled: data.isDisabled,
-            is_locked: data.isLocked,
-            is_private: data.isPrivate,
-            is_empty: data.isEmpty,
+            archived: data.isArchived ?? existing.archived,
+            is_disabled: data.isDisabled ?? false,
+            is_locked: data.isLocked ?? false,
+            is_private: data.isPrivate ?? false,
+            is_empty: data.isEmpty ?? false,
             default_branch: data.defaultBranchRef?.name ?? existing.default_branch,
             status: status,
             is_favorite: existing.is_favorite,
             last_synced_at: Date.now(),
-            is_fork: data.isFork,
-            is_mirror: data.isMirror,
+            is_fork: data.isFork ?? false,
+            is_mirror: data.isMirror ?? false,
             flags: 0,
         }
         newRepoData.flags = computeRepoFlags(newRepoData)
@@ -561,39 +561,117 @@ query($username: String!) {
     }
 }
 
+function mapGraphQLItemToRepository(data: GraphQLRepoData): Repository {
+    if (data.login) {
+        const repo: Repository = {
+            id: data.login,
+            node_id: data.id,
+            url: data.url,
+            name: data.name ?? data.login,
+            owner: data.login,
+            description: data.bio ?? data.description ?? '',
+            stars: data.followers?.totalCount || 0,
+            prev_stars: undefined,
+            language: null,
+            languages: undefined,
+            topics: [],
+            updated_at: data.updatedAt ?? new Date().toISOString(),
+            last_push_at: new Date().toISOString(),
+            latest_release: null,
+            has_new_release: false,
+            archived: false,
+            is_favorite: false,
+            is_disabled: false,
+            is_locked: false,
+            is_private: false,
+            is_empty: false,
+            status: 'active',
+            default_branch: 'master',
+            tags: [],
+            added_at: Date.now(),
+            last_synced_at: Date.now(),
+            type: 'profile' as const,
+            profile_type: data.__typename === 'Organization' ? 'org' : 'user',
+            is_fork: false,
+            is_mirror: false,
+            flags: 0,
+        }
+        repo.flags = computeRepoFlags(repo)
+        return repo
+    }
+
+    const repo: Repository = {
+        id: data.nameWithOwner || data.id,
+        node_id: data.id,
+        url: data.url,
+        name: data.name,
+        owner: data.owner?.login || '',
+        description: data.description ?? '',
+        stars: data.stargazerCount ?? 0,
+        prev_stars: undefined,
+        language: data.primaryLanguage?.name ?? null,
+        languages: (() => {
+            if (!data.languages?.edges) return undefined
+            const langs: Record<string, number> = {}
+            data.languages.edges.forEach((edge: { size: number; node: { name: string } }) => {
+                langs[edge.node.name] = edge.size
+            })
+            return Object.keys(langs).length > 0 ? langs : undefined
+        })(),
+        topics: data.repositoryTopics?.nodes?.map((n: { topic: { name: string } }) => n.topic.name).sort() || [],
+        updated_at: data.updatedAt,
+        last_push_at: data.pushedAt || data.updatedAt,
+        latest_release: data.latestRelease?.tagName ?? null,
+        has_new_release: false,
+        archived: data.isArchived ?? false,
+        is_favorite: false,
+        is_disabled: data.isDisabled ?? false,
+        is_locked: data.isLocked ?? false,
+        is_private: data.isPrivate ?? false,
+        is_empty: data.isEmpty ?? false,
+        status: data.isArchived ? 'archived' as const : 'active' as const,
+        default_branch: data.defaultBranchRef?.name || 'master',
+        tags: [],
+        added_at: Date.now(),
+        last_synced_at: Date.now(),
+        type: 'repository' as const,
+        is_fork: data.isFork ?? false,
+        is_mirror: data.isMirror ?? false,
+        flags: 0,
+    }
+    repo.flags = computeRepoFlags(repo)
+    return repo
+}
+
 function buildFetchGraphQLQuery(repoPaths: string[]): string {
-    const queryBody = repoPaths.map((path, index) => {
+    const queryParts = repoPaths.map((path, index) => {
         const [owner, name] = path.split('/')
 
         if (!owner || !name) {
-            const profileFields = `
+            return `
+            repo${index}: repositoryOwner(login: "${path}") {
+                login
+                url
+                id
+                __typename
                 ... on User {
-                    login
-                    url
                     name
                     bio
                     followers { totalCount }
                     following { totalCount }
                     updatedAt
-                    id
                 }
                 ... on Organization {
-                    login
-                    url
                     name
                     description
                     updatedAt
-                    id
                 }
-            `
-            return `
-            repo${index}: repositoryOwner(login: "${path}") {
-                ${profileFields}
             }
             `
         }
 
-        const fields = `
+        return `
+        repo${index}: repository(owner: "${owner}", name: "${name}") {
             nameWithOwner
             url
             name
@@ -612,24 +690,23 @@ function buildFetchGraphQLQuery(repoPaths: string[]): string {
             id
             primaryLanguage { name }
             defaultBranchRef { name }
-            repositoryTopics(first: 10) {
-                nodes {
-                    topic {
-                        name
-                    }
+            languages(first: 10, orderBy: {field: SIZE, direction: DESC}) {
+                edges {
+                    size
+                    node { name }
                 }
             }
-            latestRelease {
-                tagName
+            repositoryTopics(first: 10) {
+                nodes {
+                    topic { name }
+                }
             }
-        `
-        return `
-        repo${index}: repository(owner: "${owner}", name: "${name}") {
-            ${fields}
+            latestRelease { tagName }
         }
         `
-    }).join('\n')
-    return `query { ${queryBody} }`
+    })
+
+    return `query { ${queryParts.join('\n')} }`
 }
 
 export async function fetchRepositoriesBatchGraphQL(
@@ -642,131 +719,28 @@ export async function fetchRepositoriesBatchGraphQL(
 
     try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let response: any;
+        let responseData: any;
         try {
-            response = await octokit.graphql(query, { request: { signal } });
+            responseData = await octokit.graphql(query, { request: { signal } });
         } catch (err: unknown) {
+            // Check for partial data if some items failed
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const graphqlErr = err as any;
             if (graphqlErr.data) {
-                response = graphqlErr.data;
+                responseData = graphqlErr.data;
             } else {
                 throw err;
             }
         }
 
         const results: Record<string, Repository> = {}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const typedResponse = response as Record<string, any> | null;
-
         repoPaths.forEach((path, index) => {
-            const data = typedResponse?.[`repo${index}`] as GraphQLRepoData | undefined;
+            const data = responseData?.[`repo${index}`] as GraphQLRepoData | undefined;
             if (!data) {
-                const [owner, name] = path.split('/')
-                results[path] = {
-                    id: path,
-                    url: `https://github.com/${path}`,
-                    name: name || path,
-                    owner: owner || 'unknown',
-                    description: '',
-                    stars: 0,
-                    language: null,
-                    topics: [],
-                    updated_at: new Date().toISOString(),
-                    last_push_at: new Date().toISOString(),
-                    latest_release: null,
-                    has_new_release: false,
-                    archived: false,
-                    is_favorite: false,
-                    is_disabled: false,
-                    is_locked: false,
-                    is_private: false,
-                    is_empty: true,
-                    status: 'not_found',
-                    default_branch: 'master',
-                    tags: [],
-                    added_at: Date.now(),
-                    last_synced_at: Date.now(),
-                    type: name ? 'repository' as const : 'profile' as const,
-                    is_fork: false,
-                    is_mirror: false,
-                    flags: 0,
-                }
-                results[path].flags = computeRepoFlags(results[path])
+                results[path] = { id: path, status: 'not_found' } as unknown as Repository
                 return
             }
-
-            if (data.__typename === 'User' || data.__typename === 'Organization' || data.login) {
-                const profileLogin = data.login ?? path
-                results[path] = {
-                    id: profileLogin,
-                    node_id: data.id,
-                    url: data.url,
-                    name: data.name ?? profileLogin,
-                    owner: profileLogin,
-                    description: data.bio ?? data.description ?? '',
-                    stars: data.followers?.totalCount || 0,
-                    prev_stars: undefined,
-                    language: null,
-                    languages: undefined,
-                    topics: [],
-                    updated_at: data.updatedAt ?? new Date().toISOString(),
-                    last_push_at: new Date().toISOString(),
-                    latest_release: null,
-                    has_new_release: false,
-                    archived: false,
-                    is_favorite: false,
-                    is_disabled: false,
-                    is_locked: false,
-                    is_private: false,
-                    is_empty: false,
-                    status: 'active',
-                    default_branch: 'master',
-                    tags: [],
-                    added_at: Date.now(),
-                    last_synced_at: Date.now(),
-                    type: 'profile' as const,
-                    is_fork: false,
-                    is_mirror: false,
-                    flags: 0,
-                }
-                results[path].flags = computeRepoFlags(results[path])
-                return
-            }
-
-            results[path] = {
-                id: data.nameWithOwner,
-                node_id: data.id,
-                url: data.url,
-                name: data.name,
-                owner: data.owner.login,
-                description: data.description ?? '',
-                stars: data.stargazerCount,
-                prev_stars: undefined,
-                language: data.primaryLanguage?.name ?? null,
-                languages: undefined,
-                topics: data.repositoryTopics?.nodes?.map((n: { topic: { name: string } }) => n.topic.name).sort() || [],
-                updated_at: data.updatedAt,
-                last_push_at: data.pushedAt,
-                latest_release: data.latestRelease?.tagName ?? null,
-                has_new_release: false,
-                archived: data.isArchived,
-                is_favorite: false,
-                is_disabled: data.isDisabled,
-                is_locked: data.isLocked,
-                is_private: data.isPrivate,
-                is_empty: data.isEmpty,
-                status: data.isArchived ? 'archived' : 'active',
-                default_branch: data.defaultBranchRef?.name ?? 'master',
-                tags: [],
-                added_at: Date.now(),
-                last_synced_at: Date.now(),
-                type: 'repository' as const,
-                is_fork: data.isFork,
-                is_mirror: data.isMirror,
-                flags: 0,
-            }
-            results[path].flags = computeRepoFlags(results[path])
+            results[path] = mapGraphQLItemToRepository(data)
         })
 
         return results
@@ -774,4 +748,105 @@ export async function fetchRepositoriesBatchGraphQL(
         console.error('GraphQL batch fetch failed:', err)
         throw err
     }
+}
+
+/**
+ * Fetches a single repository by its path (owner/repo).
+ */
+export async function fetchRepositoryGraphQL(
+    repoPath: string,
+    token: string,
+    signal?: AbortSignal
+): Promise<Repository> {
+    const results = await fetchRepositoriesBatchGraphQL([repoPath], token, signal)
+    const repo = results[repoPath]
+    if (!repo || repo.status === 'not_found') {
+        throw new Error('Repository not found')
+    }
+
+    // --- FIX: Add REST fallback for Organization followers (GraphQL doesn't support it) ---
+    if (repo.type === 'profile' && repo.profile_type === 'org') {
+        try {
+            const restResponse = await fetch(`https://api.github.com/users/${repo.owner}`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                signal
+            });
+            if (restResponse.ok) {
+                const restData = await restResponse.json();
+                if (typeof restData.followers === 'number') {
+                    repo.stars = restData.followers;
+                    console.log(`[GraphQL] Org followers (Path) patched: ${repo.stars}`);
+                }
+            }
+        } catch (e) {
+            console.warn(`[GraphQL] Failed to fetch REST followers for org ${repo.owner}:`, e);
+        }
+    }
+
+    return repo
+}
+
+/**
+ * Fetches a single repository by its GraphQL node ID.
+ * Most robust way to sync because node IDs never change on renames.
+ */
+export async function fetchRepositoryByIdGraphQL(
+    nodeId: string,
+    token: string,
+    signal?: AbortSignal
+): Promise<Repository> {
+    const query = `
+      query ($id: ID!) {
+        node(id: $id) {
+          ... on Repository {
+            nameWithOwner, url, name, description, stargazerCount, pushedAt, updatedAt, isArchived, isDisabled, isLocked, isPrivate, isEmpty, isFork, isMirror, id, primaryLanguage { name }, defaultBranchRef { name },
+            languages(first: 10, orderBy: {field: SIZE, direction: DESC}) { edges { size node { name } } },
+            repositoryTopics(first: 10) { nodes { topic { name } } },
+            latestRelease { tagName }
+          }
+          ... on User { login, url, name, bio, followers { totalCount }, updatedAt, id, __typename }
+          ... on Organization { login, url, name, description, updatedAt, id, __typename }
+        }
+      }
+    `
+
+    const response = await fetch('https://api.github.com/graphql', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query, variables: { id: nodeId } }),
+        signal
+    })
+
+    if (!response.ok) throw new Error(`GraphQL API error: ${response.status}`)
+    const { data, errors } = await response.json()
+    if (errors) throw new Error(errors[0].message)
+
+    const node = data?.node
+    if (!node) throw new Error('Repository/Profile not found by ID')
+
+    const repo = mapGraphQLItemToRepository(node)
+
+    // --- Organization Follower Patch (Consistent) ---
+    if (repo.type === 'profile' && repo.profile_type === 'org') {
+        try {
+            const restResponse = await fetch(`https://api.github.com/users/${repo.owner}`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                signal
+            });
+            if (restResponse.ok) {
+                const restData = await restResponse.json();
+                if (typeof restData.followers === 'number') {
+                    repo.stars = restData.followers;
+                    console.log(`[GraphQL] Org followers (ID) patched: ${repo.stars}`);
+                }
+            }
+        } catch (e) {
+            console.warn(`[GraphQL] Failed to fetch REST followers for org ${repo.owner}:`, e);
+        }
+    }
+
+    return repo
 }

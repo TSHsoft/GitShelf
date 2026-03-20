@@ -16,10 +16,19 @@ import { decryptTokenAsync } from '@/lib/crypto'
 import { DndContext, DragOverlay, pointerWithin, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { Modifier } from '@dnd-kit/core'
-import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
+import type { DragStartEvent, DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { useShallow } from 'zustand/react/shallow'
 import type { GitShelfStore } from '@/store/types'
 import type { Repository, Folder } from '@/types'
+import { RepositorySchema } from '@/types'
+
+declare global {
+    interface Window {
+        __GitShelfCheckRepo__?: (id: string) => boolean;
+        __GitShelfSaveRepo__?: (repo: Repository) => { success: boolean };
+        __GitShelfSaveRepoPath__?: (path: string) => { success: boolean };
+    }
+}
 
 function LoadingScreen() {
     return (
@@ -114,7 +123,7 @@ function AppContent() {
         }
     }
 
-    const handleDragOver = (event: any) => {
+    const handleDragOver = (event: DragOverEvent) => {
         const { active, over } = event
         if (!over) return
 
@@ -216,6 +225,113 @@ function AppContent() {
             }).catch(err => console.error("Could not fetch user profile on load:", err))
         }
     }, [githubToken, patStatus, userProfile, isOnline, setUserProfile])
+
+    // Extension Integration: Proactively push auth data when ready
+    useEffect(() => {
+        const getAuth = async () => {
+            const storedId = localStorage.getItem('_gs_pk_id');
+            if (githubToken && !githubToken.startsWith('enc_')) {
+                return { githubToken, userProfile };
+            }
+            if (githubToken && githubToken.startsWith('enc_')) {
+                const decrypted = await decryptTokenAsync(githubToken, storedId || undefined);
+                return { githubToken: decrypted, userProfile };
+            }
+            return null;
+        };
+
+        const handleExtensionMessage = (event: MessageEvent) => {
+            const { type } = event.data;
+            if (type === 'EXT_REQUEST_AUTH' || type === 'EXT_AUTH_REQUEST') {
+                getAuth().then(auth => {
+                    if (auth) window.postMessage({ type: 'EXT_AUTH_DATA', payload: auth }, '*');
+                });
+            }
+
+            if (type === 'EXT_SAVE_REPO') {
+                console.log('[App] Received EXT_SAVE_REPO from message (offscreen)');
+                try {
+                    const parsed = RepositorySchema.parse(event.data.payload);
+                    useStore.getState().addRepository(parsed);
+                    window.postMessage({ type: 'EXT_SAVE_SUCCESS' }, '*');
+                } catch (err) {
+                    console.error("Extension save validation failed:", err);
+                }
+            }
+
+            if (type === 'EXT_SAVE_BY_PATH') {
+                const { path } = event.data.payload;
+                console.log('[App] Received EXT_SAVE_BY_PATH from extension:', path);
+                
+                const handleAsyncSave = async () => {
+                    try {
+                        const { fetchRepositoryGraphQL } = await import('@/lib/github');
+                        const token = await useStore.getState().getDecryptedToken();
+                        const repo = await fetchRepositoryGraphQL(path, token);
+                        useStore.getState().addRepository(repo);
+                        window.postMessage({ type: 'EXT_SAVE_SUCCESS' }, '*');
+                    } catch (err) {
+                        console.error("Extension path-based save failed:", err);
+                        window.postMessage({ type: 'EXT_SAVE_FAILURE', error: String(err) }, '*');
+                    }
+                };
+                
+                handleAsyncSave();
+            }
+        };
+
+        window.addEventListener('message', handleExtensionMessage);
+        
+        // Push current auth if already decrypted
+        if (githubToken && !githubToken.startsWith('enc_')) {
+            window.postMessage({ type: 'EXT_AUTH_DATA', payload: { githubToken, userProfile } }, '*');
+        }
+        
+        // Expose helper for the Extension (background.js can use this for live check)
+        window.__GitShelfCheckRepo__ = (id: string) => {
+            const repositories = useStore.getState().data.repositories;
+            return !!repositories[id] || Object.values(repositories).some((r: Repository) => r.id === id);
+        };
+
+        window.__GitShelfSaveRepo__ = (repo: Repository) => {
+            try {
+                const parsed = RepositorySchema.parse(repo);
+                useStore.getState().addRepository(parsed);
+                return { success: true };
+            } catch (err) {
+                console.error("Extension save via helper failed:", err);
+                return { success: false };
+            }
+        };
+
+        window.__GitShelfSaveRepoPath__ = (path: string) => {
+            console.log('[App] Extension called __GitShelfSaveRepoPath__:', path);
+            const handleAsync = async () => {
+                try {
+                    const { fetchRepositoryGraphQL } = await import('@/lib/github');
+                    const token = await useStore.getState().getDecryptedToken();
+                    const repo = await fetchRepositoryGraphQL(path, token);
+                    useStore.getState().addRepository(repo);
+                    window.postMessage({ type: 'EXT_SAVE_SUCCESS' }, '*');
+                } catch (err) {
+                    console.error("Extension path-based save via helper failed:", err);
+                    window.postMessage({ type: 'EXT_SAVE_FAILURE', error: String(err) }, '*');
+                }
+            };
+            handleAsync();
+            return { success: true };
+        };
+
+        // Signal we are ready
+        window.postMessage({ type: 'APP_READY' }, '*');
+        
+        return () => {
+            window.removeEventListener('message', handleExtensionMessage);
+            delete window.__GitShelfCheckRepo__;
+            delete window.__GitShelfSaveRepo__;
+            delete window.__GitShelfSaveRepoPath__;
+        };
+    }, [githubToken, userProfile]);
 
     if (window.location.search.includes('code=')) return <AuthCallback />
     if (!githubToken) return <LoginPage />

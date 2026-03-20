@@ -116,7 +116,7 @@ export const RepoCard = React.memo(function RepoCard({ repo, isActive, onClick, 
 
             <div className="flex flex-wrap gap-1.5 min-h-[22px]">
                 {tags.length > 0 ? (
-                    tags.slice(0, 3).map((tag) => (
+                    tags.slice(0, 5).map((tag) => (
                         <span
                             key={tag.id}
                             className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border"
@@ -133,8 +133,8 @@ export const RepoCard = React.memo(function RepoCard({ repo, isActive, onClick, 
                 ) : (
                     <span className="text-[10px] text-[var(--color-text-subtle)] italic opacity-50">No tags</span>
                 )}
-                {tags.length > 3 && (
-                    <span className="text-[10px] text-[var(--color-text-subtle)]">+{tags.length - 3}</span>
+                {tags.length > 5 && (
+                    <span className="text-[10px] text-[var(--color-text-subtle)]">+{tags.length - 5}</span>
                 )}
             </div>
 

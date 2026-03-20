@@ -119,11 +119,14 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                         <span className="text-[var(--color-text)] font-medium truncate">{repo.owner}/{repo.name}</span>
                         {tags.length > 0 && (
                             <div className="flex gap-1 shrink-0">
-                                {tags.slice(0, 3).map((tag) => (
+                                {tags.slice(0, 5).map((tag) => (
                                     <span key={tag.id} className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full border" style={{ backgroundColor: `${tag.color}10`, color: tag.color, borderColor: `${tag.color}30` }}>
                                         <TagIcon className="h-2 w-2" />{tag.name}
                                     </span>
                                 ))}
+                                {tags.length > 5 && (
+                                    <span className="text-[10px] text-[var(--color-text-muted)] self-center ml-0.5">+{tags.length - 5}</span>
+                                )}
                             </div>
                         )}
                     </div>

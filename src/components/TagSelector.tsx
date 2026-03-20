@@ -15,7 +15,10 @@ export function TagSelector({ selectedTagIds, onChange }: TagSelectorProps) {
         return a.name.localeCompare(b.name)
     })
     const toggleTag = (tagId: string) => {
-        const newIds = selectedTagIds.includes(tagId)
+        const isSelected = selectedTagIds.includes(tagId)
+        if (!isSelected && selectedTagIds.length >= 10) return
+
+        const newIds = isSelected
             ? selectedTagIds.filter((t) => t !== tagId)
             : [...selectedTagIds, tagId]
         onChange(newIds)
@@ -26,8 +29,12 @@ export function TagSelector({ selectedTagIds, onChange }: TagSelectorProps) {
     return (
         <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] flex items-center gap-1">
-                    <TagIcon className="h-3 w-3" /> Tags (optional)
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] flex items-center gap-1.5 leading-none">
+                    <TagIcon className="h-3 w-3" /> 
+                    <span>Tags</span>
+                    <span className={`text-[10px] font-medium transition-colors ${selectedTagIds.length >= 10 ? 'text-[var(--color-danger)]' : selectedTagIds.length > 0 ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-subtle)]/60'}`}>
+                        {selectedTagIds.length >= 10 ? `(Max 10 tags reached)` : selectedTagIds.length > 0 ? `(${selectedTagIds.length} selected)` : '(optional)'}
+                    </span>
                 </p>
                 {selectedTagIds.length > 0 && (
                     <button

@@ -8,20 +8,20 @@ export interface GraphQLRepoData {
     description?: string;
     followers?: { totalCount: number };
     updatedAt: string;
-    nameWithOwner: string;
-    owner: { login: string };
-    stargazerCount: number;
+    nameWithOwner?: string;
+    owner?: { login: string };
+    stargazerCount?: number;
     primaryLanguage?: { name: string };
     repositoryTopics?: { nodes: { topic: { name: string } }[] };
-    pushedAt: string;
+    pushedAt?: string;
     latestRelease?: { tagName: string };
-    isArchived: boolean;
-    isDisabled: boolean;
-    isLocked: boolean;
-    isPrivate: boolean;
-    isEmpty: boolean;
-    isFork: boolean;
-    isMirror: boolean;
+    isArchived?: boolean;
+    isDisabled?: boolean;
+    isLocked?: boolean;
+    isPrivate?: boolean;
+    isEmpty?: boolean;
+    isFork?: boolean;
+    isMirror?: boolean;
     defaultBranchRef?: { name: string };
     languages?: {
         edges: {

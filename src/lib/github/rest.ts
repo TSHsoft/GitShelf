@@ -2,6 +2,7 @@ import { Octokit } from 'octokit'
 import type { Repository } from '@/types'
 import { parseGitHubUrl } from './parser'
 import { calculateRepoStatus, computeRepoFlags } from './status'
+import { fetchRepositoryByIdGraphQL } from './graphql'
 
 export async function fetchRepository(repoPath: string, token?: string, opts?: { skipRelease?: boolean; skipLanguages?: boolean }, signal?: AbortSignal): Promise<Repository> {
     const octokit = new Octokit({ auth: token })
@@ -125,10 +126,40 @@ export async function syncRepository(
     token?: string,
     signal?: AbortSignal
 ): Promise<Repository> {
+    // --- ULTIMATE SYNC: Use node_id + GraphQL (1 Call) ---
+    if (existing.node_id && token) {
+        try {
+            const updated = await fetchRepositoryByIdGraphQL(existing.node_id, token, signal);
+            
+            // Check for rename by comparingWithOwnerpath
+            const status = calculateRepoStatus(
+                existing.id,
+                updated.id,
+                updated.archived,
+                updated.last_push_at,
+                existing.last_push_at
+            );
+
+            return {
+                ...updated,
+                status,
+                is_favorite: existing.is_favorite,
+                tags: existing.tags,
+                prev_stars: existing.stars,
+                added_at: existing.added_at, // Preserve original added date
+                last_synced_at: Date.now()
+            };
+        } catch (err) {
+            console.warn(`[Sync] GraphQL by ID failed for ${existing.id}, falling back to path-based:`, err);
+        }
+    }
+
+    // --- FALLBACK: Original Path-based REST Sync (multi-call) ---
     const octokit = new Octokit({ auth: token })
     const parts = existing.id.split('/')
     const owner = parts[0]
     const repo = parts[1]
+    // ... rest of the original function logic preserved as fallback ...
 
     try {
         if (!repo && existing.type === 'profile') {
