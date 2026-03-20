@@ -161,20 +161,23 @@ function parseGraphQLSyncResponse(
         const latest_release = data.latestRelease?.tagName || null
         const has_new_release = latest_release !== existing.latest_release && !!latest_release
 
+        const ownerName = data.owner?.login || (data.nameWithOwner ? data.nameWithOwner.split('/')[0] : existing.owner)
+        const repoName = data.name || (data.nameWithOwner ? data.nameWithOwner.split('/')[1] : existing.name)
+
         const newRepoData: Repository = {
             ...existing,
             id: data.nameWithOwner ?? existing.id,
             node_id: data.id,
             url: data.url,
-            name: data.name,
-            owner: data.owner?.login ?? existing.owner,
+            name: repoName,
+            owner: ownerName,
             description: data.description ?? '',
             stars: data.stargazerCount ?? existing.stars,
             prev_stars: existing.stars,
             language: data.primaryLanguage?.name ?? null,
             languages,
             topics,
-            updated_at: data.updatedAt,
+            updated_at: data.updatedAt ?? existing.updated_at,
             last_push_at: data.pushedAt ?? existing.last_push_at,
             latest_release,
             has_new_release,
@@ -600,12 +603,15 @@ function mapGraphQLItemToRepository(data: GraphQLRepoData): Repository {
         return repo
     }
 
+    const ownerName = data.owner?.login || (data.nameWithOwner ? data.nameWithOwner.split('/')[0] : '')
+    const repoName = data.name || (data.nameWithOwner ? data.nameWithOwner.split('/')[1] : '')
+
     const repo: Repository = {
         id: data.nameWithOwner || data.id,
         node_id: data.id,
         url: data.url,
-        name: data.name,
-        owner: data.owner?.login || '',
+        name: repoName,
+        owner: ownerName,
         description: data.description ?? '',
         stars: data.stargazerCount ?? 0,
         prev_stars: undefined,

@@ -15,9 +15,8 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Split out large, independent leaf libraries
             if (id.includes('octokit') || id.includes('@octokit')) {
-              return 'github-vendor';
+              return 'github-vendor'
             }
             if (
               id.includes('react-markdown') ||
@@ -27,7 +26,7 @@ export default defineConfig({
               id.includes('vfile') ||
               id.includes('unist')
             ) {
-              return 'markdown-vendor';
+              return 'markdown-vendor'
             }
           }
         },
