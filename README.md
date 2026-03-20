@@ -15,14 +15,13 @@
 
 </div>
 
----
-
 ## 🧩 Browser Extension
 
-GitShelf is accompanied by a **Chromium-based browser extension** (Edge, Chrome, etc.) that allows you to capture repositories and profiles directly from the GitHub interface with a single click. It synchronizes securely with your web session and works independently.
+GitShelf is accompanied by a **Dual-Browser Certified extension** for **Google Chrome** and **Microsoft Edge**. It allows you to capture repositories and profiles directly from the GitHub interface with a single click.
 
 - **One-click Capture**: Save any repository or user profile without leaving your current tab.
-- **Standalone Sync**: Background synchronization for up-to-date sessions.
+- **Chrome & Edge Native**: Optimized for the latest Chromium-based browsers.
+- **Secure Bridge**: Background synchronization with your web session using AES-GCM encryption.
 - **Source Code**: [GitShelf Extensions](https://github.com/TSHsoft/GitShelf-Extensions)
 
 ---
