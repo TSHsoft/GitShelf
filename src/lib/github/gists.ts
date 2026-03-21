@@ -1,6 +1,6 @@
 import { Octokit } from 'octokit'
 
-export async function getGistBackup(token: string): Promise<{ id: string, content: string } | null> {
+export async function getGistBackup(token: string): Promise<{ id: string, content: string, updated_at?: string } | null> {
     const octokit = new Octokit({ auth: token })
     try {
         const { data } = await octokit.rest.gists.list()
@@ -21,7 +21,7 @@ export async function getGistBackup(token: string): Promise<{ id: string, conten
                 if (targetKey) {
                     const file = fullGist.files[targetKey]
                     if (file && file.content) {
-                        return { id: backupGist.id, content: file.content }
+                        return { id: backupGist.id, content: file.content, updated_at: fullGist.updated_at }
                     }
                 }
             }

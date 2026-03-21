@@ -70,7 +70,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                 const parsed = GitShelfDataSchema.safeParse(JSON.parse(backup.content))
                 if (parsed.success && Object.keys(parsed.data.repositories).length > 0) {
                     setLastCheckedGist({
-                        date: parsed.data.last_modified,
+                        date: backup.updated_at ? new Date(backup.updated_at).getTime() : parsed.data.last_modified,
                         repoCount: Object.keys(parsed.data.repositories).length,
                         data: parsed.data
                     })

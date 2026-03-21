@@ -287,13 +287,16 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
             }
         }),
     updateTag: (id, updates) =>
-        set((state) => ({
-            data: {
-                ...state.data,
-                last_modified: Date.now(),
-                tags: { ...state.data.tags, [id]: { ...state.data.tags[id], ...updates } },
-            },
-        })),
+        set((state) => {
+            if (!state.data.tags[id]) return state;
+            return {
+                data: {
+                    ...state.data,
+                    last_modified: Date.now(),
+                    tags: { ...state.data.tags, [id]: { ...state.data.tags[id], ...updates } },
+                },
+            };
+        }),
     bulkAddTags: (repoIds, tagIds) =>
         set((state) => {
             const updates: Record<string, Repository> = {}
@@ -307,6 +310,9 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
                 const newTags = new Set(repo.tags)
                 let added = false
                 tagIds.forEach(tId => {
+                    // Validate: Skip if tag no longer exists
+                    if (!state.data.tags[tId]) return;
+
                     if (!newTags.has(tId)) {
                         newTags.add(tId)
                         added = true
@@ -378,6 +384,12 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
             const repo = state.data.repositories[repoId]
             if (!repo) return state
             if (repo.folder_id === folderId) return state
+            
+            // Validate: Prevent moving to a folder that no longer exists
+            if (folderId && !state.data.folders[folderId]) {
+                console.warn(`[DataSlice] Attempted to move repo to non-existent folder: ${folderId}`);
+                return state;
+            }
 
             return {
                 data: {
@@ -392,6 +404,12 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
         }),
     bulkMoveReposToFolder: (repoIds, folderId) =>
         set((state) => {
+            // Validate: Prevent moving to a folder that no longer exists
+            if (folderId && !state.data.folders[folderId]) {
+                console.warn(`[DataSlice] Attempted to bulk move repos to non-existent folder: ${folderId}`);
+                return state;
+            }
+
             const updates: Record<string, Repository> = {}
             let hasChanges = false
 

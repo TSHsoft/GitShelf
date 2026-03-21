@@ -3,6 +3,7 @@ import { createStore } from 'zustand'
 import { createDataSlice } from './createDataSlice'
 import { DEFAULT_DATA } from '@/types'
 import type { Repository } from '@/types'
+import { computeRepoFlags } from '@/lib/github/status'
 import type { GitShelfStore } from '../types'
 
 // Simple mock for useStore state access in removeFolder/moveRepo if needed
@@ -49,6 +50,7 @@ describe('Data Slice', () => {
         is_mirror: false,
         flags: 0,
     }
+    mockRepo.flags = computeRepoFlags(mockRepo)
 
     it('should initialize with default data', () => {
         const state = store.getState()
