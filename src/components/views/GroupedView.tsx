@@ -18,8 +18,12 @@ interface Group {
 }
 
 function buildGroups(repos: Repository[], groupBy: GroupBy, tags: Record<string, { id: string; name: string; color: string }>): Group[] {
-    const sortByName = (g: Group) => {
-        g.repos.sort((a, b) => a.name.localeCompare(b.name))
+    const sortByAddedDate = (g: Group) => {
+        g.repos.sort((a, b) => {
+            const dateA = a.added_at ? new Date(a.added_at).getTime() : 0
+            const dateB = b.added_at ? new Date(b.added_at).getTime() : 0
+            return dateB - dateA
+        })
         return g
     }
 
@@ -37,8 +41,8 @@ function buildGroups(repos: Repository[], groupBy: GroupBy, tags: Record<string,
                 }
             }
         }
-        const result = Object.values(tagGroups).sort((a, b) => a.label.localeCompare(b.label)).map(sortByName)
-        if (untagged.length > 0) result.push(sortByName({ key: '__untagged__', label: 'Untagged', repos: untagged }))
+        const result = Object.values(tagGroups).sort((a, b) => a.label.localeCompare(b.label)).map(sortByAddedDate)
+        if (untagged.length > 0) result.push(sortByAddedDate({ key: '__untagged__', label: 'Untagged', repos: untagged }))
         return result
     }
 
@@ -49,7 +53,7 @@ function buildGroups(repos: Repository[], groupBy: GroupBy, tags: Record<string,
             if (!langGroups[lang]) langGroups[lang] = { key: lang, label: lang, color: getLanguageColor(repo.language), repos: [] }
             langGroups[lang].repos.push(repo)
         }
-        return Object.values(langGroups).sort((a, b) => b.repos.length - a.repos.length).map(sortByName)
+        return Object.values(langGroups).sort((a, b) => b.repos.length - a.repos.length).map(sortByAddedDate)
     }
 
     if (groupBy === 'status') {
@@ -60,7 +64,7 @@ function buildGroups(repos: Repository[], groupBy: GroupBy, tags: Record<string,
             if (!statusGroups[s]) statusGroups[s] = { key: s, label: s === 'not_found' ? 'Not Found' : s.charAt(0).toUpperCase() + s.slice(1), repos: [] }
             statusGroups[s].repos.push(repo)
         }
-        return order.filter(s => statusGroups[s]).map(s => sortByName(statusGroups[s]))
+        return order.filter(s => statusGroups[s]).map(s => sortByAddedDate(statusGroups[s]))
     }
 
     if (groupBy === 'added_at') {
@@ -74,10 +78,10 @@ function buildGroups(repos: Repository[], groupBy: GroupBy, tags: Record<string,
             if (!monthGroups[sortKey]) monthGroups[sortKey] = { key: sortKey, label: `${monthName} ${year}`, repos: [] }
             monthGroups[sortKey].repos.push(repo)
         }
-        return Object.values(monthGroups).sort((a, b) => b.key.localeCompare(a.key)).map(sortByName)
+        return Object.values(monthGroups).sort((a, b) => b.key.localeCompare(a.key)).map(sortByAddedDate)
     }
 
-    return [{ key: 'all', label: 'All', repos: [...repos].sort((a, b) => a.name.localeCompare(b.name)) }]
+    return [{ key: 'all', label: 'All', repos: sortByAddedDate({ key: 'all', label: 'All', repos: [...repos] }).repos }]
 }
 
 function GroupHeader({ group, groupBy, collapsed, onToggle }: {
