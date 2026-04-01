@@ -6,19 +6,27 @@ export function MobileShareAction() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'offline'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const addPendingRepo = useStore(state => state.addPendingRepo);
+  const githubToken = useStore(state => state.githubToken);
 
   useEffect(() => {
     const processShare = async () => {
-      // 1. Check offline
+      // 1. Check Auth 
+      if (!githubToken) {
+         setStatus('error');
+         setErrorMsg('Please log in to GitShelf first to use the share target feature.');
+         return;
+      }
+
+      // 2. Check offline
       if (!navigator.onLine) {
          setStatus('offline');
          setErrorMsg('You are offline. GitShelf PWA requires network access to sync to your Inbox.');
          return;
       }
 
-      // 2. Extract URL
+      // 3. Extract URL (Android can share through text, url, or title)
       const params = new URLSearchParams(window.location.search);
-      const sharedUrl = params.get('url') || params.get('text') || '';
+      const sharedUrl = params.get('url') || params.get('text') || params.get('title') || '';
 
       // Extract github url if it was embedded in text
       const ghMatch = sharedUrl.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([^/\s]+)(?:\/([^/\s]+))?/i);
@@ -60,7 +68,7 @@ export function MobileShareAction() {
     };
 
     processShare();
-  }, [addPendingRepo]);
+  }, [addPendingRepo, githubToken]);
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[var(--color-bg)] p-6 text-center">

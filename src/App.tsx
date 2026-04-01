@@ -374,14 +374,15 @@ function AppContent() {
         };
     }, [githubToken, userProfile]);
 
+    if (window.location.search.includes('share_target=')) {
+        return <MobileShareAction />
+    }
+
     if (window.location.search.includes('code=')) return <AuthCallback />
     if (!githubToken) return <LoginPage />
     if (!isLoaded) return <LoadingScreen />
 
     if (isMobile) {
-        if (window.location.search.includes('share_target=')) {
-            return <MobileShareAction />
-        }
         return <MobileReadonlyViewer />
     }
 
