@@ -17,7 +17,7 @@ export default defineConfig({
         description: 'Organize your GitHub Stars',
         theme_color: '#000000',
         background_color: '#000000',
-        display: 'minimal-ui',
+        display: 'standalone',
         start_url: '/',
         icons: [
           {
