@@ -19,9 +19,10 @@ interface RepoCardProps {
     onClick: () => void
     selected?: boolean
     selectedIds?: string[]
+    readonly?: boolean
 }
 
-export const RepoCard = React.memo(function RepoCard({ repo, isActive, onClick, selected, selectedIds }: RepoCardProps) {
+export const RepoCard = React.memo(function RepoCard({ repo, isActive, onClick, selected, selectedIds, readonly }: RepoCardProps) {
     const { allTags, removeRepository, syncRepository, toggleFavorite, syncingRepoIds, githubToken, markAsViewed } = useStore(useShallow((state: GitShelfStore) => ({
         allTags: state.data.tags,
         removeRepository: state.removeRepository,
@@ -64,9 +65,9 @@ export const RepoCard = React.memo(function RepoCard({ repo, isActive, onClick, 
 
     return (
         <div
-            ref={setNodeRef}
-            {...attributes}
-            {...listeners}
+            ref={readonly ? undefined : setNodeRef}
+            {...(readonly ? {} : attributes)}
+            {...(readonly ? {} : listeners)}
             className={`repo-card group relative flex flex-col gap-2.5 rounded-xl border p-4 transition-[border-color,background-color,box-shadow,opacity] duration-150 ${isActive
                 ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-lg shadow-blue-500/5'
                 : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-text-muted)]/40 hover:bg-[var(--color-surface-2)]'
@@ -97,13 +98,15 @@ export const RepoCard = React.memo(function RepoCard({ repo, isActive, onClick, 
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <button
-                        ref={menuTriggerRef}
-                        onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }}
-                        className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--color-surface-3)] ${showMenu ? 'opacity-100 bg-[var(--color-surface-3)]' : ''}`}
-                    >
-                        <MoreHorizontal className="h-4 w-4 text-[var(--color-text-muted)]" />
-                    </button>
+                    {!readonly && (
+                        <button
+                            ref={menuTriggerRef}
+                            onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }}
+                            className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--color-surface-3)] ${showMenu ? 'opacity-100 bg-[var(--color-surface-3)]' : ''}`}
+                        >
+                            <MoreHorizontal className="h-4 w-4 text-[var(--color-text-muted)]" />
+                        </button>
+                    )}
                     {isUnread && <div className="h-2 w-2 rounded-full bg-[var(--color-danger)] animate-pulse" title="Updated since last view" />}
                 </div>
             </div>

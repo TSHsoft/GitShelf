@@ -42,6 +42,10 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
         if (!data.folders) {
             data.folders = {}
         }
+        // Migration: Ensure pending_repos exist for older backups
+        if (!data.pending_repos) {
+            data.pending_repos = []
+        }
         const nextRepos: Record<string, Repository> = {}
         Object.entries(data.repositories).forEach(([id, repo]) => {
             nextRepos[id] = withFlags(repo)
@@ -67,11 +71,15 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
                 }
             })
 
+            // Clean up any matching pending URL from mobile inbox
+            const nextPendingRepos = (state.data.pending_repos || []).filter(u => u.toLowerCase() !== repo.url.toLowerCase())
+
             return {
                 data: {
                     ...state.data,
                     last_modified: Date.now(),
                     repositories: { ...state.data.repositories, [repoWithFlags.id]: repoWithFlags },
+                    pending_repos: nextPendingRepos
                 },
                 tagToRepos: nextTagToRepos
             }
@@ -429,6 +437,32 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
                     last_modified: Date.now(),
                     repositories: { ...state.data.repositories, ...updates },
                 },
+            }
+        }),
+    addPendingRepo: (url) => 
+        set((state) => {
+            const current = state.data.pending_repos || []
+            if (current.includes(url)) return state
+            const alreadyExists = Object.values(state.data.repositories).some(r => r.url.toLowerCase() === url.toLowerCase())
+            if (alreadyExists) return state
+            return {
+                data: {
+                    ...state.data,
+                    last_modified: Date.now(),
+                    pending_repos: [...current, url]
+                }
+            }
+        }),
+    removePendingRepo: (url) =>
+        set((state) => {
+            const current = state.data.pending_repos || []
+            if (!current.includes(url)) return state
+            return {
+                data: {
+                    ...state.data,
+                    last_modified: Date.now(),
+                    pending_repos: current.filter(u => u !== url)
+                }
             }
         }),
     updateSettings: (updates) =>

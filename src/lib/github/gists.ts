@@ -76,3 +76,47 @@ export async function upsertGistBackup(token: string, content: string, existingG
         throw e
     }
 }
+
+export async function getGistFile(token: string, filename: string): Promise<string | null> {
+    const octokit = new Octokit({ auth: token })
+    try {
+        const { data } = await octokit.rest.gists.list()
+        const backupGist = data.find(gist =>
+            gist.files && Object.keys(gist.files).some(name =>
+                name.toLowerCase() === 'gitshelf_database.json' || name.toLowerCase() === 'gitshelf.json'
+            )
+        )
+        if (backupGist && backupGist.id) {
+            const { data: fullGist } = await octokit.rest.gists.get({ gist_id: backupGist.id })
+            if (fullGist.files && fullGist.files[filename]) {
+                return fullGist.files[filename].content || null
+            }
+        }
+        return null
+    } catch (e) {
+        console.error(`Failed to get Gist file ${filename}:`, e)
+        return null
+    }
+}
+
+export async function updateGistFile(token: string, filename: string, content: string): Promise<void> {
+    const octokit = new Octokit({ auth: token })
+    try {
+        const { data } = await octokit.rest.gists.list()
+        const backupGist = data.find(gist =>
+            gist.files && Object.keys(gist.files).some(name =>
+                name.toLowerCase() === 'gitshelf_database.json' || name.toLowerCase() === 'gitshelf.json'
+            )
+        )
+        if (backupGist && backupGist.id) {
+            await octokit.rest.gists.update({
+                gist_id: backupGist.id,
+                files: {
+                    [filename]: { content }
+                }
+            })
+        }
+    } catch (e) {
+        console.error(`Failed to update Gist file ${filename}:`, e)
+    }
+}

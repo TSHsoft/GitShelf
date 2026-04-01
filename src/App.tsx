@@ -21,6 +21,10 @@ import { useShallow } from 'zustand/react/shallow'
 import type { GitShelfStore } from '@/store/types'
 import type { Repository, Folder } from '@/types'
 import { RepositorySchema } from '@/types'
+import { useDeviceMode } from '@/hooks/useDeviceMode'
+import { MobileShareAction } from '@/components/mobile/MobileShareAction'
+import { MobileReadonlyViewer } from '@/components/mobile/MobileReadonlyViewer'
+import { PendingInbox } from '@/components/PendingInbox'
 
 declare global {
     interface Window {
@@ -72,6 +76,7 @@ const smartSnap: Modifier = ({ transform, activatorEvent, activeNodeRect, active
 };
 
 function AppContent() {
+    const { isMobile } = useDeviceMode()
     const {
         data, theme, patStatus, isOnline, setIsOnline, githubToken,
         userProfile, setUserProfile, moveRepoToFolder, bulkMoveReposToFolder,
@@ -226,6 +231,31 @@ function AppContent() {
         }
     }, [githubToken, patStatus, userProfile, isOnline, setUserProfile])
 
+    // Try to pop the remote pending_repos queue into our local queue
+    useEffect(() => {
+        const fetchRemoteInbox = async () => {
+            if (githubToken && patStatus !== 'invalid' && isLoaded && isOnline) {
+                try {
+                    const { getGistFile } = await import('@/lib/github/gists')
+                    const token = await useStore.getState().getDecryptedToken()
+                    if (token) {
+                        const remoteStr = await getGistFile(token, 'gitshelf_pending.json')
+                        if (remoteStr) {
+                            const remoteRepos = JSON.parse(remoteStr)
+                            if (Array.isArray(remoteRepos) && remoteRepos.length > 0) {
+                                // Add them to local state store queue
+                                remoteRepos.forEach(url => useStore.getState().addPendingRepo(url))
+                            }
+                        }
+                    }
+                } catch (e) { 
+                    console.error('Failed to sync remote inbox', e) 
+                }
+            }
+        }
+        fetchRemoteInbox()
+    }, [githubToken, patStatus, isLoaded, isOnline])
+
     // Extension Integration: Proactively push auth data when ready
     useEffect(() => {
         const getAuth = async () => {
@@ -348,6 +378,13 @@ function AppContent() {
     if (!githubToken) return <LoginPage />
     if (!isLoaded) return <LoadingScreen />
 
+    if (isMobile) {
+        if (window.location.search.includes('share_target=')) {
+            return <MobileShareAction />
+        }
+        return <MobileReadonlyViewer />
+    }
+
     return (
         <DndContext
             sensors={sensors}
@@ -381,6 +418,7 @@ function AppContent() {
                 <div className="flex flex-1 min-h-0 overflow-hidden">
                     <MemoizedSidebar />
                     <main className={`flex flex-1 flex-col min-w-0 relative ${activeId ? 'pointer-events-none select-none' : ''}`}>
+                        <PendingInbox />
                         <ErrorBoundary isFullPage={false}>
                             <MemoizedRepoList />
                         </ErrorBoundary>

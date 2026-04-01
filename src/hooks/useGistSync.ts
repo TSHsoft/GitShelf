@@ -6,7 +6,8 @@ import type { GitShelfData } from '@/types'
 
 // Local Persistence Hook
 export function useLocalPersistence() {
-    const { setData, setLoaded } = useStore()
+    const setData = useStore(state => state.setData)
+    const setLoaded = useStore(state => state.setLoaded)
 
     useEffect(() => {
         let mounted = true
@@ -72,9 +73,25 @@ export async function executeGistBackup() {
 
     try {
         const existing = await getGistBackup(token).catch(() => null)
-        const content = JSON.stringify(state.data)
+        
+        // Exclude pending_repos from main JSON to avoid overriding mobile's independent sync
+        const { pending_repos, ...dataToBackup } = state.data;
+        const content = JSON.stringify(dataToBackup)
 
         await upsertGistBackup(token, content, existing?.id)
+
+        // If local has pending_repos when backing up, we can also push them to the separate remote queue
+        if (pending_repos && pending_repos.length > 0) {
+            const { getGistFile, updateGistFile } = await import('@/lib/github/gists')
+            try {
+                const remoteStr = await getGistFile(token, 'gitshelf_pending.json')
+                const remoteRepos = remoteStr ? JSON.parse(remoteStr) : []
+                const merged = Array.from(new Set([...remoteRepos, ...pending_repos]))
+                await updateGistFile(token, 'gitshelf_pending.json', JSON.stringify(merged))
+            } catch (e) {
+                console.error('Failed to sync pending_repos to wrapper', e)
+            }
+        }
 
         state.setGistSyncStatus('success')
         state.setLastGistSyncTime(Date.now())
@@ -88,10 +105,8 @@ export async function executeGistBackup() {
 }
 
 export function useGistSync() {
-    const {
-        data,
-        gistSyncStatus
-    } = useStore()
+    const data = useStore(state => state.data)
+    const gistSyncStatus = useStore(state => state.gistSyncStatus)
 
     const manualBackup = async () => executeGistBackup()
 

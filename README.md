@@ -56,6 +56,12 @@ GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign i
 - **Status tracking** — Automatically detects `active`, `archived`, `renamed`, `stale`, or `not_found`
 - **Language breakdown** — Visual distribution bar for repository languages
 
+### 📱 Mobile PWA & Share Target
+- **Installable PWA** — Install GitShelf on your iOS or Android device for a native-like app experience.
+- **System Share Integration** — GitShelf registers as a **Share Target** on your mobile device. You can share any GitHub URL directly from your mobile browser or the GitHub app to GitShelf.
+- **Smart Inbox Queue** — Shared links are safely pushed to an independent `gitshelf_pending.json` queue in your Gist. 
+- **Desktop Pop Verification** — Next time you open GitShelf on your desktop, it automatically fetches your mobile shares and displays them in a "Pending Inbox" banner for you to review and import into your database in one click.
+
 ### 🔄 Sync & Offline Support
 - **One-click sync** to refresh metadata (stars, description, language, latest release) for all bookmarked repos
 - **Offline-First** — All data is persisted to **IndexedDB**, allowing you to browse and manage your shelf without an internet connection. Changes sync to Gist once you're back online.

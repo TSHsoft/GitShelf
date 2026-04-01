@@ -93,6 +93,7 @@ export const GitShelfDataSchema = z.object({
     repositories: z.record(z.string(), RepositorySchema),
     tags: z.record(z.string(), TagSchema),
     folders: z.record(z.string(), FolderSchema).default({}),
+    pending_repos: z.array(z.string()).default([]),
     settings: SettingsSchema,
 })
 
@@ -119,6 +120,7 @@ export const DEFAULT_DATA: GitShelfData = {
     repositories: {},
     tags: {},
     folders: {},
+    pending_repos: [],
     settings: {
         theme: 'dark',
         view_mode: 'card',
