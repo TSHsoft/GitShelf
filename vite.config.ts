@@ -39,7 +39,7 @@ export default defineConfig({
         ],
         // Web Manifest Share Target
         share_target: {
-          action: '/?share_target=true',
+          action: '/share',
           method: 'GET',
           params: {
             title: 'title',

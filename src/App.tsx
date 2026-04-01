@@ -374,7 +374,7 @@ function AppContent() {
         };
     }, [githubToken, userProfile]);
 
-    if (window.location.search.includes('share_target=')) {
+    if (window.location.pathname.includes('/share')) {
         return <MobileShareAction />
     }
 
