@@ -83,7 +83,7 @@ export function PendingInbox() {
     };
 
     return (
-        <div className="mx-4 mt-4 mb-2 overflow-hidden rounded-xl border border-blue-500/30 bg-blue-500/5 shadow-sm text-[var(--color-text)] relative p-4 pl-16">
+        <div className="mx-4 mt-4 mb-2 overflow-hidden rounded-xl border border-blue-500/30 bg-blue-500/5 shadow-sm text-[var(--color-text)] relative p-4 pl-20">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-blue-500/10 p-2">
                 <Inbox className="h-5 w-5 text-blue-500" />
             </div>
