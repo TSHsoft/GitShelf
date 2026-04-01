@@ -92,16 +92,10 @@ export function MobileShareAction() {
                 </p>
                 <div className="flex gap-3 mt-4">
                     <button 
-                        onClick={() => window.close()}
-                        className="px-6 py-2.5 bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] text-[var(--color-text)] border border-[var(--color-border)] rounded-full text-sm font-medium transition-colors"
-                    >
-                        Close App
-                    </button>
-                    <button 
                         onClick={() => window.location.href = '/'}
-                        className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-sm font-medium transition-colors"
+                        className="px-8 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-sm font-medium transition-colors"
                     >
-                        Go Home
+                        Return to GitShelf
                     </button>
                 </div>
             </div>
