@@ -11,9 +11,14 @@ export function MobileShareAction() {
   useEffect(() => {
     const processShare = async () => {
       // 1. Check Auth 
+      const params = new URLSearchParams(window.location.search);
+      const sharedUrl = params.get('url') || params.get('text') || params.get('title') || '';
+      
       if (!githubToken) {
+         // Save the URL so we can show a hint
+         if (sharedUrl) sessionStorage.setItem('_gs_pending_share', sharedUrl);
          setStatus('error');
-         setErrorMsg('Please log in to GitShelf first to use the share target feature.');
+         setErrorMsg('not_logged_in');
          return;
       }
 
@@ -24,9 +29,7 @@ export function MobileShareAction() {
          return;
       }
 
-      // 3. Extract URL (Android can share through text, url, or title)
-      const params = new URLSearchParams(window.location.search);
-      const sharedUrl = params.get('url') || params.get('text') || params.get('title') || '';
+      // 3. Extract URL (Android can share through text, url, or title) -- already extracted above
 
       // Extract github url if it was embedded in text
       const ghMatch = sharedUrl.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([^/\s]+)(?:\/([^/\s]+))?/i);
@@ -108,18 +111,35 @@ export function MobileShareAction() {
                 <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
                     <AlertCircle className="w-8 h-8 text-red-500" />
                 </div>
-                <h2 className="text-xl font-semibold text-[var(--color-text)] tracking-tight">
-                    {status === 'offline' ? 'Offline Mode' : 'Invalid Link'}
-                </h2>
-                <p className="text-[var(--color-text-muted)] text-sm max-w-[250px] leading-relaxed">
-                    {errorMsg}
-                </p>
-                <button 
-                  onClick={() => window.location.href = '/'}
-                  className="mt-4 px-8 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-sm font-medium transition-colors shadow-sm"
-                >
-                    Dismiss
-                </button>
+                {errorMsg === 'not_logged_in' ? (
+                    <>
+                        <h2 className="text-xl font-semibold text-[var(--color-text)] tracking-tight">Login Required</h2>
+                        <p className="text-[var(--color-text-muted)] text-sm max-w-[280px] leading-relaxed text-center">
+                            You need to log in to GitShelf first. Tap below to open the app and sign in, then share this link again.
+                        </p>
+                        <button
+                            onClick={() => window.location.href = '/'}
+                            className="mt-4 px-8 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-sm font-medium transition-colors shadow-sm"
+                        >
+                            Open GitShelf & Login
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <h2 className="text-xl font-semibold text-[var(--color-text)] tracking-tight">
+                            {status === 'offline' ? 'Offline Mode' : 'Invalid Link'}
+                        </h2>
+                        <p className="text-[var(--color-text-muted)] text-sm max-w-[250px] leading-relaxed">
+                            {errorMsg}
+                        </p>
+                        <button
+                            onClick={() => window.location.href = '/'}
+                            className="mt-4 px-8 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-sm font-medium transition-colors shadow-sm"
+                        >
+                            Dismiss
+                        </button>
+                    </>
+                )}
             </div>
         )}
     </div>
