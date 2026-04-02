@@ -14,6 +14,11 @@ export function MobileShareAction() {
       const params = new URLSearchParams(window.location.search);
       const sharedUrl = params.get('url') || params.get('text') || params.get('title') || '';
       
+      if (!sharedUrl) {
+          window.location.href = '/';
+          return;
+      }
+      
       if (!githubToken) {
          // Save the URL so we can show a hint
          if (sharedUrl) sessionStorage.setItem('_gs_pending_share', sharedUrl);
@@ -21,6 +26,9 @@ export function MobileShareAction() {
          setErrorMsg('not_logged_in');
          return;
       }
+
+      // Clear params from URL so "Back" button doesn't re-trigger the action
+      window.history.replaceState({}, '', window.location.pathname);
 
       // 2. Check offline
       if (!navigator.onLine) {
