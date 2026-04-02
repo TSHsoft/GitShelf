@@ -18,6 +18,7 @@ import { arrayMove } from '@dnd-kit/sortable'
 import type { Modifier } from '@dnd-kit/core'
 import type { DragStartEvent, DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { useShallow } from 'zustand/react/shallow'
+import { getEagerInboxPromise, clearEagerInboxPromise } from '@/lib/github/eagerInboxFetch'
 import type { GitShelfStore } from '@/store/types'
 import type { Repository, Folder } from '@/types'
 import { RepositorySchema } from '@/types'
@@ -237,6 +238,20 @@ function AppContent() {
             const { gistId } = useStore.getState()
             if (githubToken && patStatus !== 'invalid' && isOnline) {
                 try {
+                    // Try the eager prefetch result first (started before React mounted)
+                    const eagerPromise = getEagerInboxPromise()
+                    if (eagerPromise) {
+                        clearEagerInboxPromise()
+                        const eagerRepos = await eagerPromise
+                        if (eagerRepos) {
+                            useStore.setState(state => ({
+                                data: { ...state.data, pending_repos: eagerRepos }
+                            }))
+                            return
+                        }
+                    }
+
+                    // Fallback: full API fetch (first visit or no cached gistId)
                     const { getGistFile } = await import('@/lib/github/gists')
                     const token = await useStore.getState().getDecryptedToken()
                     if (token) {
