@@ -71,8 +71,12 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
                 }
             })
 
-            // Clean up any matching pending URL from mobile inbox
-            const nextPendingRepos = (state.data.pending_repos || []).filter(u => u.toLowerCase() !== repo.url.toLowerCase())
+            // Clean up any matching pending URL from mobile inbox (fuzzy match handles query params)
+            const canonicalUrl = repo.url.toLowerCase().split(/[?#]/)[0]
+            const nextPendingRepos = (state.data.pending_repos || []).filter(u => {
+                const pendingCanonical = u.toLowerCase().split(/[?#]/)[0]
+                return pendingCanonical !== canonicalUrl
+            })
 
             return {
                 data: {

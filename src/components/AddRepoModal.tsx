@@ -33,7 +33,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
     }, [onClose])
 
     const parseRepoPath = (raw: string): string => {
-        let trimmed = raw.trim()
+        let trimmed = raw.trim().split(/[?#]/)[0]
 
         // Remove trailing slash
         if (trimmed.endsWith('/')) {
