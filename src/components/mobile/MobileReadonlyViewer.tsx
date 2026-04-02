@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { RepoCard } from '../RepoCard';
-import { Book, Search } from 'lucide-react';
+import { Book, Search, Inbox } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 
 export function MobileReadonlyViewer() {
-    const { repositories, userProfile } = useStore(useShallow(state => ({
+    const { repositories, userProfile, pendingRepos } = useStore(useShallow(state => ({
         repositories: state.data.repositories,
-        userProfile: state.userProfile
+        userProfile: state.userProfile,
+        pendingRepos: state.data.pending_repos || []
     })));
     
     const [search, setSearch] = useState('');
@@ -52,6 +53,19 @@ export function MobileReadonlyViewer() {
             </header>
             
             <main className="flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 space-y-3 safe-area-pb">
+                {pendingRepos.length > 0 && (
+                    <div className="flex items-center gap-3 p-3.5 mb-1 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-500 shadow-sm animate-in slide-in-from-top-2 fade-in duration-300">
+                        <Inbox className="w-5 h-5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold truncate leading-tight">
+                                {pendingRepos.length} item{pendingRepos.length > 1 ? 's' : ''} waiting in Inbox
+                            </p>
+                            <p className="text-[11px] opacity-80 leading-tight mt-0.5 max-w-full truncate">
+                                Open GitShelf on PC to save {pendingRepos.length > 1 ? 'them' : 'it'}
+                            </p>
+                        </div>
+                    </div>
+                )}
                 {repos.length > 0 ? (
                     repos.map(repo => (
                         <RepoCard 
