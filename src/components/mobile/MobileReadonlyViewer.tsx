@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { RepoCard } from '../RepoCard';
-import { Book, Search, Inbox } from 'lucide-react';
+import { Book, Search, Inbox, Sun, Moon } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 
 export function MobileReadonlyViewer() {
-    const { repositories, userProfile, pendingRepos } = useStore(useShallow(state => ({
+    const { repositories, userProfile, pendingRepos, theme, toggleTheme } = useStore(useShallow(state => ({
         repositories: state.data.repositories,
         userProfile: state.userProfile,
-        pendingRepos: state.data.pending_repos || []
+        pendingRepos: state.data.pending_repos || [],
+        theme: state.theme,
+        toggleTheme: state.toggleTheme
     })));
     
     const [search, setSearch] = useState('');
@@ -32,11 +34,20 @@ export function MobileReadonlyViewer() {
                         </div>
                         <h1 className="text-xl font-bold text-[var(--color-text)] tracking-tight">GitShelf</h1>
                     </div>
-                    {userProfile && (
-                        <div className="w-8 h-8 rounded-full overflow-hidden border border-[var(--color-border)] flex items-center justify-center bg-[var(--color-surface-2)]">
-                            <img src={userProfile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                        </div>
-                    )}
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={toggleTheme}
+                            className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] bg-[var(--color-surface-2)] rounded-full border border-[var(--color-border)] transition-colors shadow-sm"
+                            aria-label="Toggle Theme"
+                        >
+                            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                        </button>
+                        {userProfile && (
+                            <div className="w-8 h-8 rounded-full overflow-hidden border border-[var(--color-border)] flex items-center justify-center bg-[var(--color-surface-2)] shrink-0">
+                                <img src={userProfile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className="relative">
                     <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -61,7 +72,7 @@ export function MobileReadonlyViewer() {
                                 {pendingRepos.length} item{pendingRepos.length > 1 ? 's' : ''} waiting in Inbox
                             </p>
                             <p className="text-[11px] opacity-80 leading-tight mt-0.5 max-w-full truncate">
-                                Open GitShelf on PC to save {pendingRepos.length > 1 ? 'them' : 'it'}
+                                Open GitShelf on desktop to save {pendingRepos.length > 1 ? 'them' : 'it'}
                             </p>
                         </div>
                     </div>
