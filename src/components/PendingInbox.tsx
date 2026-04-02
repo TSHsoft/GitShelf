@@ -28,8 +28,9 @@ export function PendingInbox() {
             for (const url of pendingRepos) {
                 try {
                     // Extract github path (e.g., owner/repo)
-                    const match = url.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([^/\s]+\/[^/\s]+)/i);
-                    const path = match ? match[1] : url.replace('https://github.com/', '');
+                    const cleanUrl = url.split(/[?#]/)[0];
+                    const match = cleanUrl.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([^/\s]+\/[^/\s]+)/i);
+                    const path = match ? match[1] : cleanUrl.replace('https://github.com/', '');
                     
                     const repo = await fetchRepositoryGraphQL(path, token);
                     addRepository(repo); // This also auto-removes it from pending_repos

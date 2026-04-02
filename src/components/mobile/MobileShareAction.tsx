@@ -40,7 +40,8 @@ export function MobileShareAction() {
       // 3. Extract URL (Android can share through text, url, or title) -- already extracted above
 
       // Extract github url if it was embedded in text
-      const ghMatch = sharedUrl.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([^/\s]+)(?:\/([^/\s]+))?/i);
+      const cleanInput = sharedUrl.split(/[?#]/)[0];
+      const ghMatch = cleanInput.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([^/\s]+)(?:\/([^/\s]+))?/i);
       
       if (!ghMatch) {
          setStatus('error');
