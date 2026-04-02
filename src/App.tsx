@@ -242,9 +242,11 @@ function AppContent() {
                         const remoteStr = await getGistFile(token, 'gitshelf_pending.json')
                         if (remoteStr) {
                             const remoteRepos = JSON.parse(remoteStr)
-                            if (Array.isArray(remoteRepos) && remoteRepos.length > 0) {
-                                // Add them to local state store queue
-                                remoteRepos.forEach(url => useStore.getState().addPendingRepo(url))
+                            if (Array.isArray(remoteRepos)) {
+                                // Overwrite local queue with the definitive remote master queue
+                                useStore.setState(state => ({
+                                    data: { ...state.data, pending_repos: remoteRepos }
+                                }))
                             }
                         }
                     }
