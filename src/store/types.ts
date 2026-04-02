@@ -109,6 +109,7 @@ export interface AuthSlice {
     githubToken: string | null
     githubTokenExpiry: string | null
     userProfile: { avatarUrl: string, name: string | null, login: string, id: number } | null
+    gistId: string | null
 
     setGistSyncStatus: (status: BackupSyncStatus) => void
     setLastGistSyncTime: (time: number | null) => void
@@ -116,6 +117,7 @@ export interface AuthSlice {
     setGithubToken: (token: string | null) => void
     setGithubTokenExpiry: (expiry: string | null) => void
     setUserProfile: (profile: { avatarUrl: string, name: string | null, login: string, id: number } | null) => void
+    setGistId: (id: string | null) => void
     getDecryptedToken: () => Promise<string>
 }
 

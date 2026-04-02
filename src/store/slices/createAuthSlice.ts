@@ -8,6 +8,7 @@ const getInitialId = () => {
     const id = localStorage.getItem('_gs_pk_id')
     return id ? parseInt(id, 10) : null
 }
+const getInitialGistId = () => localStorage.getItem('_gs_gist_id')
 
 const getInitialProfile = () => {
     const profile = localStorage.getItem('_gs_up_v1')
@@ -24,7 +25,8 @@ export const createAuthSlice: StateCreator<GitShelfStore, [], [], AuthSlice> = (
     gistSyncError: null,
     githubToken: getInitialToken(),
     githubTokenExpiry: getInitialExpiry(),
-    userProfile: getInitialProfile(), // Persisted user profile
+    userProfile: getInitialProfile(), 
+    gistId: getInitialGistId(),
 
     setGistSyncStatus: (status) => set({ gistSyncStatus: status }),
     setLastGistSyncTime: (time) => set({ lastGistSyncTime: time }),
@@ -83,6 +85,14 @@ export const createAuthSlice: StateCreator<GitShelfStore, [], [], AuthSlice> = (
             } catch (err) {
                 console.error('Failed to migrate token to V3:', err)
             }
+        }
+    },
+    setGistId: (id) => {
+        set({ gistId: id })
+        if (id) {
+            localStorage.setItem('_gs_gist_id', id)
+        } else {
+            localStorage.removeItem('_gs_gist_id')
         }
     },
     getDecryptedToken: async () => {

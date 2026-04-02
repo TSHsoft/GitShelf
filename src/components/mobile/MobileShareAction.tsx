@@ -62,13 +62,16 @@ export function MobileShareAction() {
              if (navigator.onLine) {
                  const token = await useStore.getState().getDecryptedToken();
                  if (token) {
-                     const { getGistFile, updateGistFile } = await import('@/lib/github/gists');
-                     const remoteStr = await getGistFile(token, 'gitshelf_pending.json');
-                     const remoteRepos = remoteStr ? JSON.parse(remoteStr) : [];
-                     if (!remoteRepos.includes(cleanUrl)) {
-                         remoteRepos.push(cleanUrl);
-                         await updateGistFile(token, 'gitshelf_pending.json', JSON.stringify(remoteRepos));
-                     }
+                      const { getGistFile, updateGistFile } = await import('@/lib/github/gists');
+                      const currentGistId = useStore.getState().gistId;
+                      const result = await getGistFile(token, 'gitshelf_pending.json', currentGistId);
+                      if (result && !currentGistId) useStore.getState().setGistId(result.id);
+                      const remoteRepos: string[] = result ? JSON.parse(result.content) : [];
+                      const normalizedUrl = cleanUrl.toLowerCase();
+                      if (!remoteRepos.map(u => u.toLowerCase()).includes(normalizedUrl)) {
+                          remoteRepos.push(normalizedUrl);
+                          await updateGistFile(token, 'gitshelf_pending.json', JSON.stringify(remoteRepos), currentGistId || result?.id);
+                      }
                  }
              }
           } catch (e) {

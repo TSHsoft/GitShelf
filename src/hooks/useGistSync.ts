@@ -72,7 +72,9 @@ export async function executeGistBackup() {
     state.setGistSyncError(null)
 
     try {
-        const existing = await getGistBackup(token).catch(() => null)
+        const { gistId } = state
+        const existing = await getGistBackup(token, gistId).catch(() => null)
+        if (existing?.id && !gistId) state.setGistId(existing.id)
         
         // Exclude pending_repos from main JSON to avoid overriding mobile's independent sync
         const { pending_repos, ...dataToBackup } = state.data;
@@ -84,10 +86,11 @@ export async function executeGistBackup() {
         if (pending_repos && pending_repos.length > 0) {
             const { getGistFile, updateGistFile } = await import('@/lib/github/gists')
             try {
-                const remoteStr = await getGistFile(token, 'gitshelf_pending.json')
-                const remoteRepos = remoteStr ? JSON.parse(remoteStr) : []
+                const currentGistId = useStore.getState().gistId
+                const result = await getGistFile(token, 'gitshelf_pending.json', currentGistId)
+                const remoteRepos = result ? JSON.parse(result.content) : []
                 const merged = Array.from(new Set([...remoteRepos, ...pending_repos]))
-                await updateGistFile(token, 'gitshelf_pending.json', JSON.stringify(merged))
+                await updateGistFile(token, 'gitshelf_pending.json', JSON.stringify(merged), currentGistId || result?.id)
             } catch (e) {
                 console.error('Failed to sync pending_repos to wrapper', e)
             }

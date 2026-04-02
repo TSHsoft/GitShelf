@@ -234,14 +234,16 @@ function AppContent() {
     // Try to pop the remote pending_repos queue into our local queue
     useEffect(() => {
         const fetchRemoteInbox = async () => {
+            const { gistId } = useStore.getState()
             if (githubToken && patStatus !== 'invalid' && isLoaded && isOnline) {
                 try {
                     const { getGistFile } = await import('@/lib/github/gists')
                     const token = await useStore.getState().getDecryptedToken()
                     if (token) {
-                        const remoteStr = await getGistFile(token, 'gitshelf_pending.json')
-                        if (remoteStr) {
-                            const remoteRepos = JSON.parse(remoteStr)
+                        const result = await getGistFile(token, 'gitshelf_pending.json', gistId)
+                        if (result) {
+                            if (!gistId) useStore.getState().setGistId(result.id)
+                            const remoteRepos = JSON.parse(result.content)
                             if (Array.isArray(remoteRepos)) {
                                 useStore.setState(state => ({
                                     data: { ...state.data, pending_repos: remoteRepos }

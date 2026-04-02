@@ -1,18 +1,22 @@
 import { Octokit } from 'octokit'
 
-export async function getGistBackup(token: string): Promise<{ id: string, content: string, updated_at?: string } | null> {
+export async function getGistBackup(token: string, gistId?: string | null): Promise<{ id: string, content: string, updated_at?: string } | null> {
     const octokit = new Octokit({ auth: token })
     try {
-        const { data } = await octokit.rest.gists.list()
-        const backupGist = data.find(gist =>
-            gist.files && Object.keys(gist.files).some(filename =>
-                filename.toLowerCase() === 'gitshelf_database.json' || filename.toLowerCase() === 'gitshelf.json'
+        let targetId = gistId
+
+        if (!targetId) {
+            const { data } = await octokit.rest.gists.list()
+            const backupGist = data.find(gist =>
+                gist.files && Object.keys(gist.files).some(filename =>
+                    filename.toLowerCase() === 'gitshelf_database.json' || filename.toLowerCase() === 'gitshelf.json'
+                )
             )
-        )
+            targetId = backupGist?.id
+        }
 
-        if (backupGist && backupGist.id) {
-            const { data: fullGist } = await octokit.rest.gists.get({ gist_id: backupGist.id })
-
+        if (targetId) {
+            const { data: fullGist } = await octokit.rest.gists.get({ gist_id: targetId })
             if (fullGist.files) {
                 const targetKey = Object.keys(fullGist.files).find(filename =>
                     filename.toLowerCase() === 'gitshelf_database.json' || filename.toLowerCase() === 'gitshelf.json'
@@ -21,7 +25,7 @@ export async function getGistBackup(token: string): Promise<{ id: string, conten
                 if (targetKey) {
                     const file = fullGist.files[targetKey]
                     if (file && file.content) {
-                        return { id: backupGist.id, content: file.content, updated_at: fullGist.updated_at }
+                        return { id: targetId, content: file.content, updated_at: fullGist.updated_at }
                     }
                 }
             }
@@ -77,19 +81,29 @@ export async function upsertGistBackup(token: string, content: string, existingG
     }
 }
 
-export async function getGistFile(token: string, filename: string): Promise<string | null> {
+export async function getGistFile(token: string, filename: string, gistId?: string | null): Promise<{ id: string, content: string } | null> {
     const octokit = new Octokit({ auth: token })
     try {
-        const { data } = await octokit.rest.gists.list()
-        const backupGist = data.find(gist =>
-            gist.files && Object.keys(gist.files).some(name =>
-                name.toLowerCase() === 'gitshelf_database.json' || name.toLowerCase() === 'gitshelf.json'
+        let targetId = gistId
+        
+        if (!targetId) {
+            const { data } = await octokit.rest.gists.list()
+            const backupGist = data.find(gist =>
+                gist.files && Object.keys(gist.files).some(name =>
+                    name.toLowerCase() === 'gitshelf_database.json' || name.toLowerCase() === 'gitshelf.json'
+                )
             )
-        )
-        if (backupGist && backupGist.id) {
-            const { data: fullGist } = await octokit.rest.gists.get({ gist_id: backupGist.id })
-            if (fullGist.files && fullGist.files[filename]) {
-                return fullGist.files[filename].content || null
+            targetId = backupGist?.id
+        }
+
+        if (targetId) {
+            const { data: fullGist } = await octokit.rest.gists.get({ gist_id: targetId })
+            if (fullGist.files) {
+                // Find file case-insensitively
+                const actualName = Object.keys(fullGist.files).find(n => n.toLowerCase() === filename.toLowerCase())
+                if (actualName && fullGist.files[actualName]?.content) {
+                    return { id: targetId, content: fullGist.files[actualName].content! }
+                }
             }
         }
         return null
@@ -99,18 +113,24 @@ export async function getGistFile(token: string, filename: string): Promise<stri
     }
 }
 
-export async function updateGistFile(token: string, filename: string, content: string): Promise<void> {
+export async function updateGistFile(token: string, filename: string, content: string, gistId?: string | null): Promise<void> {
     const octokit = new Octokit({ auth: token })
     try {
-        const { data } = await octokit.rest.gists.list()
-        const backupGist = data.find(gist =>
-            gist.files && Object.keys(gist.files).some(name =>
-                name.toLowerCase() === 'gitshelf_database.json' || name.toLowerCase() === 'gitshelf.json'
+        let targetId = gistId
+
+        if (!targetId) {
+            const { data } = await octokit.rest.gists.list()
+            const backupGist = data.find(gist =>
+                gist.files && Object.keys(gist.files).some(name =>
+                    name.toLowerCase() === 'gitshelf_database.json' || name.toLowerCase() === 'gitshelf.json'
+                )
             )
-        )
-        if (backupGist && backupGist.id) {
+            targetId = backupGist?.id
+        }
+
+        if (targetId) {
             await octokit.rest.gists.update({
-                gist_id: backupGist.id,
+                gist_id: targetId,
                 files: {
                     [filename]: { content }
                 }
