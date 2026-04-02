@@ -255,7 +255,18 @@ function AppContent() {
                 }
             }
         }
+
         fetchRemoteInbox()
+
+        // Re-fetch when the app becomes visible again (e.g. user switches back to it)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchRemoteInbox()
+            }
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
     }, [githubToken, patStatus, isLoaded, isOnline])
 
     // Extension Integration: Proactively push auth data when ready
