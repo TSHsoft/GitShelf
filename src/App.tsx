@@ -251,10 +251,23 @@ function AppContent() {
                         }
                     }
 
-                    // Fallback: full API fetch (first visit or no cached gistId)
-                    const { getGistFile } = await import('@/lib/github/gists')
+                    // Intermediate fallback: lightweight raw URL fetch if credentials are known
                     const token = await useStore.getState().getDecryptedToken()
                     if (token) {
+                        const { userProfile } = useStore.getState()
+                        if (gistId && userProfile?.login) {
+                            const { fetchPendingInboxRaw } = await import('@/lib/github/gists')
+                            const remoteRepos = await fetchPendingInboxRaw(token, userProfile.login, gistId)
+                            if (remoteRepos) {
+                                useStore.setState(state => ({
+                                    data: { ...state.data, pending_repos: remoteRepos }
+                                }))
+                                return
+                            }
+                        }
+
+                        // Ultimate fallback: full API fetch (first visit or no cached gistId)
+                        const { getGistFile } = await import('@/lib/github/gists')
                         const result = await getGistFile(token, 'gitshelf_pending.json', gistId)
                         if (result) {
                             if (!gistId) useStore.getState().setGistId(result.id)

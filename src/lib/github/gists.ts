@@ -140,3 +140,28 @@ export async function updateGistFile(token: string, filename: string, content: s
         console.error(`Failed to update Gist file ${filename}:`, e)
     }
 }
+
+/**
+ * Lightweight fetch for the pending inbox file only.
+ * Uses the Gist raw URL to avoid downloading the entire Gist
+ * (which includes the potentially large database file).
+ */
+export async function fetchPendingInboxRaw(token: string, login: string, gistId: string): Promise<string[] | null> {
+    try {
+        const rawUrl = `https://gist.githubusercontent.com/${login}/${gistId}/raw/gitshelf_pending.json`
+        const res = await fetch(rawUrl, {
+            headers: { Authorization: `token ${token}` },
+            cache: 'no-store',
+        })
+        if (!res.ok) return null
+
+        const text = await res.text()
+        if (!text) return null
+
+        const parsed = JSON.parse(text)
+        return Array.isArray(parsed) ? parsed : null
+    } catch (e) {
+        console.error('Failed to fetch pending inbox via raw URL:', e)
+        return null
+    }
+}

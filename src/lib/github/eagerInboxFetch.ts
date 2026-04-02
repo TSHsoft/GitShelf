@@ -1,19 +1,18 @@
 /**
  * Eager Inbox Fetch
  *
- * Fires the gitshelf_pending.json Gist request as early as possible —
- * before React mounts — so by the time the UI is ready, the data is
- * already in-flight or even resolved.
+ * Fires a lightweight request for gitshelf_pending.json BEFORE React mounts.
  *
- * Rules:
- * - Only runs if both encrypted token AND gistId are already in localStorage.
- * - Does NOT do gists.list() — it needs the cached gistId to be useful.
- * - Holds the result in a module-scoped promise so App.tsx can consume it.
+ * Key optimization: Uses the Gist raw URL to fetch ONLY the pending file,
+ * instead of gists.get() which downloads the entire Gist (including the
+ * potentially large GitShelf_database.json).
+ *
+ * Raw URL pattern (no SHA = latest version):
+ *   https://gist.githubusercontent.com/{login}/{gist_id}/raw/gitshelf_pending.json
  */
 
 import { decryptTokenAsync } from '@/lib/crypto'
 
-// The in-flight (or resolved) fetch result
 let _eagerPromise: Promise<string[] | null> | null = null
 
 export function getEagerInboxPromise(): Promise<string[] | null> | null {
@@ -27,9 +26,18 @@ export function clearEagerInboxPromise() {
 export function fireEagerInboxFetch() {
     const encToken = localStorage.getItem('_gs_pk_v1')
     const gistId = localStorage.getItem('_gs_gist_id')
+    const profileStr = localStorage.getItem('_gs_up_v1')
 
-    // Only fast-path if we already have both cached credentials
-    if (!encToken || !gistId) return
+    // Need all three: token, gistId, and login
+    if (!encToken || !gistId || !profileStr) return
+
+    let login: string
+    try {
+        login = JSON.parse(profileStr).login
+        if (!login) return
+    } catch {
+        return
+    }
 
     _eagerPromise = (async (): Promise<string[] | null> => {
         try {
@@ -37,27 +45,18 @@ export function fireEagerInboxFetch() {
             const token = await decryptTokenAsync(encToken, storedId)
             if (!token) return null
 
-            // Direct API call — no gists.list() needed, we have the ID
-            const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/vnd.github+json',
-                    'X-GitHub-Api-Version': '2022-11-28',
-                },
+            // Fetch ONLY the pending file via raw URL — no full Gist download
+            const rawUrl = `https://gist.githubusercontent.com/${login}/${gistId}/raw/gitshelf_pending.json`
+            const res = await fetch(rawUrl, {
+                headers: { Authorization: `token ${token}` },
+                cache: 'no-store',
             })
             if (!res.ok) return null
 
-            const data = await res.json()
-            // Case-insensitive file lookup
-            const fileKey = Object.keys(data.files || {}).find(
-                (k: string) => k.toLowerCase() === 'gitshelf_pending.json'
-            )
-            if (!fileKey) return null
+            const text = await res.text()
+            if (!text) return null
 
-            const content = data.files[fileKey]?.content
-            if (!content) return null
-
-            const parsed = JSON.parse(content)
+            const parsed = JSON.parse(text)
             return Array.isArray(parsed) ? parsed : null
         } catch {
             return null
