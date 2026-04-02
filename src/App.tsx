@@ -234,24 +234,28 @@ function AppContent() {
     // Try to pop the remote pending_repos queue into our local queue
     useEffect(() => {
         const fetchRemoteInbox = async () => {
+            console.log('[Inbox] Checking sync eligibility...', { githubToken: !!githubToken, patStatus, isLoaded, isOnline })
             if (githubToken && patStatus !== 'invalid' && isLoaded && isOnline) {
                 try {
                     const { getGistFile } = await import('@/lib/github/gists')
                     const token = await useStore.getState().getDecryptedToken()
                     if (token) {
+                        console.log('[Inbox] Fetching gitshelf_pending.json...')
                         const remoteStr = await getGistFile(token, 'gitshelf_pending.json')
                         if (remoteStr) {
                             const remoteRepos = JSON.parse(remoteStr)
+                            console.log('[Inbox] Sync successful - repos in Gist:', remoteRepos.length)
                             if (Array.isArray(remoteRepos)) {
-                                // Overwrite local queue with the definitive remote master queue
                                 useStore.setState(state => ({
                                     data: { ...state.data, pending_repos: remoteRepos }
                                 }))
                             }
+                        } else {
+                            console.log('[Inbox] File gitshelf_pending.json not found or empty in Gist.')
                         }
                     }
                 } catch (e) { 
-                    console.error('Failed to sync remote inbox', e) 
+                    console.error('[Inbox] Failed to sync remote inbox:', e) 
                 }
             }
         }
