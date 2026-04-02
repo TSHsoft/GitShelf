@@ -25,9 +25,25 @@ export function useGithubRateLimit() {
             }
         }
 
-        fetchRateLimit()
+        // Prefetch Gist ID in parallel so Inbox sync can skip the slow gists.list() call
+        const prefetchGistId = async () => {
+            const { gistId } = useStore.getState()
+            if (gistId) return // already cached
+            try {
+                const decryptedToken = await useStore.getState().getDecryptedToken()
+                if (!decryptedToken) return
+                const { getGistBackup } = await import('@/lib/github/gists')
+                const backup = await getGistBackup(decryptedToken)
+                if (backup?.id) useStore.getState().setGistId(backup.id)
+            } catch (e) {
+                console.error('Failed to prefetch Gist ID:', e)
+            }
+        }
 
-        // Optional: Set up interval if we want to poll, but events might be better
+        // Run both in parallel — no extra wait time added
+        fetchRateLimit()
+        prefetchGistId()
+
         const intervalId = setInterval(fetchRateLimit, 5 * 60 * 1000) // Every 5 minutes
 
         return () => clearInterval(intervalId)
