@@ -235,7 +235,7 @@ function AppContent() {
     useEffect(() => {
         const fetchRemoteInbox = async () => {
             const { gistId } = useStore.getState()
-            if (githubToken && patStatus !== 'invalid' && isLoaded && isOnline) {
+            if (githubToken && patStatus !== 'invalid' && isOnline) {
                 try {
                     const { getGistFile } = await import('@/lib/github/gists')
                     const token = await useStore.getState().getDecryptedToken()
@@ -268,7 +268,7 @@ function AppContent() {
 
         document.addEventListener('visibilitychange', handleVisibilityChange)
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }, [githubToken, patStatus, isLoaded, isOnline])
+    }, [githubToken, patStatus, isOnline])
 
     // Extension Integration: Proactively push auth data when ready
     useEffect(() => {
