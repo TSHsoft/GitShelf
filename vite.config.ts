@@ -11,6 +11,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
+      workbox: {
+        skipWaiting: true,      // new SW activates immediately after install
+        clientsClaim: true,     // new SW takes control of all open tabs immediately
+      },
       manifest: {
         name: 'GitShelf',
         short_name: 'GitShelf',
