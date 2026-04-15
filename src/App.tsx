@@ -26,6 +26,7 @@ import { useDeviceMode } from '@/hooks/useDeviceMode'
 import { MobileShareAction } from '@/components/mobile/MobileShareAction'
 import { MobileReadonlyViewer } from '@/components/mobile/MobileReadonlyViewer'
 import { PendingInbox } from '@/components/PendingInbox'
+import { TrashView } from '@/components/TrashView'
 
 declare global {
     interface Window {
@@ -81,7 +82,7 @@ function AppContent() {
     const {
         data, theme, patStatus, isOnline, setIsOnline, githubToken,
         userProfile, setUserProfile, moveRepoToFolder, bulkMoveReposToFolder,
-        rateLimitRemaining, isLoaded, clearSelection
+        rateLimitRemaining, isLoaded, clearSelection, showTrash
     } = useStore(useShallow((state: GitShelfStore) => ({
         data: state.data,
         theme: state.theme,
@@ -95,7 +96,8 @@ function AppContent() {
         bulkMoveReposToFolder: state.bulkMoveReposToFolder,
         rateLimitRemaining: state.rateLimitRemaining,
         isLoaded: state.isLoaded,
-        clearSelection: state.clearSelection
+        clearSelection: state.clearSelection,
+        showTrash: state.showTrash,
     })))
 
     const { scheduleSave } = useAutoSave()
@@ -201,6 +203,15 @@ function AppContent() {
 
     useLocalPersistence()
     useGithubRateLimit()
+
+    // Purge expired trash on load
+    useEffect(() => {
+        if (isLoaded) {
+            const retentionDays = data.settings.trash_retention_days ?? 30
+            useStore.getState().purgeExpiredTrash(retentionDays)
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isLoaded])
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme)
@@ -461,9 +472,9 @@ function AppContent() {
                 <div className="flex flex-1 min-h-0 overflow-hidden">
                     <MemoizedSidebar />
                     <main className={`flex flex-1 flex-col min-w-0 relative ${activeId ? 'pointer-events-none select-none' : ''}`}>
-                        <PendingInbox />
+                        {!showTrash && <PendingInbox />}
                         <ErrorBoundary isFullPage={false}>
-                            <MemoizedRepoList />
+                            {showTrash ? <TrashView /> : <MemoizedRepoList />}
                         </ErrorBoundary>
                     </main>
                 </div>

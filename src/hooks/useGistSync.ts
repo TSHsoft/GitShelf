@@ -76,17 +76,27 @@ export async function executeGistBackup() {
         const existing = await getGistBackup(token, gistId).catch(() => null)
         if (existing?.id && !gistId) state.setGistId(existing.id)
         
-        // Exclude pending_repos from main JSON to avoid overriding mobile's independent sync
-        const { pending_repos, ...dataToBackup } = state.data;
+        // Exclude pending_repos AND trash from main JSON
+        // trash → gitshelf_trash.json (separate file in same gist)
+        // pending_repos → gitshelf_pending.json (mobile inbox)
+        const { pending_repos, trash, ...dataToBackup } = state.data;
         const content = JSON.stringify(dataToBackup)
 
-        await upsertGistBackup(token, content, existing?.id)
+        const savedGistId = await upsertGistBackup(token, content, existing?.id)
+        
+        // Ensure gistId is stored after creating a new gist
+        const currentGistId = useStore.getState().gistId || savedGistId
+        if (savedGistId && !useStore.getState().gistId) state.setGistId(savedGistId)
 
-        // If local has pending_repos when backing up, we can also push them to the separate remote queue
+        // Backup trash to gitshelf_trash.json in the same gist
+        const trashContent = JSON.stringify(trash || {})
+        const { updateGistFile } = await import('@/lib/github/gists')
+        await updateGistFile(token, 'GitShelf_trash.json', trashContent, currentGistId)
+
+        // If local has pending_repos when backing up, push them to the separate remote queue
         if (pending_repos && pending_repos.length > 0) {
-            const { getGistFile, updateGistFile } = await import('@/lib/github/gists')
             try {
-                const currentGistId = useStore.getState().gistId
+                const { getGistFile } = await import('@/lib/github/gists')
                 const result = await getGistFile(token, 'gitshelf_pending.json', currentGistId)
                 const remoteRepos = result ? JSON.parse(result.content) : []
                 const merged = Array.from(new Set([...remoteRepos, ...pending_repos]))

@@ -28,32 +28,45 @@ export function LanguageBar({ languages, language, mode = 'bar' }: LanguageBarPr
 
     // Dots mode — compact, for list/table
     if (mode === 'dots') {
-        const top = entries.slice(0, 4)
-
         // Special case: Single language -> show name
         if (entries.length === 1) {
             const [lang] = entries[0]
             return (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
                     <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: getLanguageColor(lang) }} />
-                    <span className="text-xs text-[var(--color-text-subtle)] truncate">{lang}</span>
+                    <span className="text-xs text-[var(--color-text-subtle)] truncate max-w-[170px]" title={lang}>{lang}</span>
                 </div>
             )
         }
 
+        const [primaryLang] = entries[0]
+        const remaining = entries.slice(1)
+        const topRest = remaining.slice(0, 3) // Show up to 3 dots for remaining languages
+
         return (
-            <div className="flex items-center gap-1.5" title={entries.map(([l, b]) => `${l} ${((b / total) * 100).toFixed(1)}%`).join('\n')}>
-                {top.map(([lang]) => (
-                    <span
-                        key={lang}
-                        className="h-2.5 w-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: getLanguageColor(lang) }}
-                        title={lang}
-                    />
-                ))}
-                {entries.length > 4 && (
-                    <span className="text-xs text-[var(--color-text-muted)]">+{entries.length - 4}</span>
-                )}
+            <div className="flex items-center gap-1.5 min-w-0" title={entries.map(([l, b]) => `${l} ${((b / total) * 100).toFixed(1)}%`).join('\n')}>
+                {/* Primary language */}
+                <div className="flex items-center gap-1 shrink-0 min-w-0">
+                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: getLanguageColor(primaryLang) }} />
+                    <span className="text-xs text-[var(--color-text-subtle)] truncate max-w-[170px]">{primaryLang}</span>
+                </div>
+
+                {/* Remaining languages as dots */}
+                <div className="flex items-center gap-0.5 ml-0.5 shrink-0">
+                    {topRest.map(([lang]) => (
+                        <span
+                            key={lang}
+                            className="h-2 w-2 rounded-full shrink-0 opacity-70"
+                            style={{ backgroundColor: getLanguageColor(lang) }}
+                            title={lang}
+                        />
+                    ))}
+                    {remaining.length > 3 && (
+                        <span className="text-[10px] text-[var(--color-text-muted)] ml-0.5 pointer-events-none self-center">
+                            +{remaining.length - 3}
+                        </span>
+                    )}
+                </div>
             </div>
         )
     }

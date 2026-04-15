@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Trash2, Tag as TagIcon, Archive, AlertTriangle, RefreshCw, Star, Heart, MoreHorizontal, FolderInput, BookOpen, User, Building2, Book, Users } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Trash2, Tag as TagIcon, Archive, AlertTriangle, RefreshCw, Star, Heart, MoreHorizontal, FolderInput, BookOpen, User, Building2, Book, Users, StickyNote, Folder as FolderIcon } from 'lucide-react'
 import type { Repository, SortField, RepoStatus } from '@/types'
 import { useStore } from '@/store/useStore'
 import { formatStars } from '@/lib/github'
@@ -11,6 +11,7 @@ import { RepoDrawer } from '@/components/RepoDrawer'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { FolderSelectDialog } from '@/components/FolderSelectDialog'
 import { PortalMenu } from '@/components/PortalMenu'
+import { EditNoteDialog } from '@/components/EditNoteDialog'
 import { useDraggable } from '@dnd-kit/core'
 
 function StatusBadge({ status }: { status: RepoStatus }) {
@@ -77,11 +78,13 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
     const isSyncing = syncingRepoIds.includes(repo.id)
     const syncError = syncErrors[repo.id]
     const hasError = !!syncError
+    const folder = repo.folder_id ? data.folders[repo.folder_id] : null
     const menuTriggerRef = useRef<HTMLButtonElement>(null)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showFolderSelect, setShowFolderSelect] = useState(false)
     const [showMenu, setShowMenu] = useState(false)
     const [showTagEditor, setShowTagEditor] = useState(false)
+    const [showNoteEditor, setShowNoteEditor] = useState(false)
 
     // Star Diff
     const starDiff = repo.prev_stars !== undefined ? repo.stars - repo.prev_stars : 0
@@ -156,7 +159,7 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                 </div>
 
                 {/* Language */}
-                <div className="w-24 flex items-center shrink-0">
+                <div className="w-48 px-4 flex items-center shrink-0">
                     <LanguageBar languages={repo.languages} language={repo.language} mode="dots" />
                     {!repo.language && (!repo.languages || Object.keys(repo.languages).length === 0) && (
                         <span className="text-[var(--color-text-subtle)] text-xs">—</span>
@@ -175,7 +178,7 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                 </div>
 
                 {/* Release */}
-                <div className="w-24 pr-2 text-[var(--color-text-muted)] text-xs font-mono flex items-center shrink-0" title={repo.latest_release || ''}>
+                <div className="w-16 pr-2 text-[var(--color-text-muted)] text-xs font-mono flex items-center shrink-0" title={repo.latest_release || ''}>
                     <span className="truncate min-w-0">{repo.latest_release ?? '—'}</span>
                     {repo.has_new_release && (
                         <span className="ml-1 text-[9px] font-bold text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-1 py-0.5 rounded uppercase tracking-wider shrink-0">
@@ -223,7 +226,7 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                                 : 'text-[var(--color-text-muted)] hover:text-rose-500'}`}
                             title={repo.is_favorite ? "Remove from Favorites" : "Add to Favorites"}
                         >
-                            <Heart className={`h-3.5 w-3.5 ${repo.is_favorite ? 'fill-current' : ''}`} />
+                            <Heart className={`h-3.5 w-3.5`} />
                         </button>
 
                         <a
@@ -271,6 +274,13 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                                         <TagIcon className="h-3.5 w-3.5" />
                                         Edit tags
                                     </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowNoteEditor(true) }}
+                                        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-2)]"
+                                    >
+                                        <StickyNote className="h-3.5 w-3.5 text-orange-400" />
+                                        Edit note
+                                    </button>
                                     <div className="my-1 border-t border-[var(--color-border)]" />
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowDeleteConfirm(true) }}
@@ -287,13 +297,28 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                 </div>
             </div>
 
-            {/* Topics Row (Full Width) */}
-            {repo.topics && repo.topics.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2 pl-12 pr-4 relative">
+            {/* Topics & Folder Row (Full Width) */}
+            {(folder || (repo.topics && repo.topics.length > 0)) && (
+                <div className="flex flex-wrap items-center gap-1 mt-2 pl-12 pr-4 relative min-h-[22px]">
                     {/* Decorator line to connect to description */}
                     <div className="absolute top-0 left-6 w-0.5 h-2 bg-[var(--color-border)]/50 -translate-y-full" />
 
-                    {repo.topics.map(topic => (
+                    {folder && (
+                        <span 
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border"
+                            style={{
+                                backgroundColor: folder.color ? `${folder.color}15` : 'var(--color-surface-2)',
+                                color: folder.color || 'var(--color-text-muted)',
+                                borderColor: folder.color ? `${folder.color}30` : 'var(--color-border)'
+                            }}
+                            title="Folder"
+                        >
+                            <FolderIcon className="h-2.5 w-2.5 shrink-0" style={{ fill: folder.color ? `${folder.color}40` : 'transparent' }} />
+                            {folder.name}
+                        </span>
+                    )}
+
+                    {repo.topics?.map(topic => (
                         <span key={topic} className="px-2 py-0.5 rounded-full bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 text-xs text-[var(--color-accent)]">
                             {topic}
                         </span>
@@ -301,11 +326,18 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                 </div>
             )}
 
+            {/* Note Row */}
+            {repo.note && (
+                <div className="flex items-start pl-12 pr-4 mt-1">
+                    <p className="text-[10px] text-orange-400 leading-relaxed">{repo.note}</p>
+                </div>
+            )}
+
             {showDeleteConfirm && (
                 <ConfirmDialog
                     isOpen={showDeleteConfirm}
                     title="Delete Repo"
-                    description={<>Are you sure you want to delete <strong>{repo.owner}/{repo.name}</strong>?<br/><br/>This action cannot be undone.</>}
+                    description={<>Are you sure you want to delete <strong>{repo.owner}/{repo.name}</strong>?<br/><br/>It will be moved to the Trash.</>}
                     variant="danger"
                     confirmLabel="Delete"
                     onConfirm={() => removeRepository(repo.id)}
@@ -325,6 +357,14 @@ export function TableRow({ repo, onClick, selected, selectedIds, onToggle, githu
                     repoId={repo.id}
                     initialTags={repo.tags}
                     onClose={() => setShowTagEditor(false)}
+                />
+            )}
+
+            {showNoteEditor && (
+                <EditNoteDialog
+                    repoId={repo.id}
+                    initialNote={repo.note}
+                    onClose={() => setShowNoteEditor(false)}
                 />
             )}
         </div>
@@ -416,7 +456,7 @@ export const TableView = React.memo(function TableView({ repos, selectedIds, onT
 
                 <button
                     onClick={() => handleSort('language')}
-                    className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
+                    className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-48`}
                 >
                     Language
                     <SortIcon field={'language'} />
@@ -440,7 +480,7 @@ export const TableView = React.memo(function TableView({ repos, selectedIds, onT
 
                 <button
                     onClick={() => handleSort('latest_release')}
-                    className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-24`}
+                    className={`flex items-center gap-1 hover:text-[var(--color-text)] transition-colors w-16`}
                 >
                     Release
                     <SortIcon field={'latest_release'} />

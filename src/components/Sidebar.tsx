@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { BookMarked, Cloud, PanelLeft, PanelLeftClose, Loader2, ChevronUp } from 'lucide-react'
+import { BookMarked, Cloud, PanelLeft, PanelLeftClose, Loader2, ChevronUp, Trash2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { SettingsModal } from './SettingsModal'
 import { ManageTagDialog } from './ManageTagDialog'
@@ -37,6 +37,9 @@ export function Sidebar() {
     const [showSettings, setShowSettings] = useState(false)
     const [showManageTags, setShowManageTags] = useState(false)
     const [showAvatarMenu, setShowAvatarMenu] = useState(false)
+    const trashCount = Object.keys(useStore(state => state.data.trash) || {}).length
+
+    const { showTrash, setShowTrash } = useStore()
 
     const avatarBtnRef = useRef<HTMLButtonElement>(null)
 
@@ -105,6 +108,41 @@ export function Sidebar() {
                 <nav className="flex flex-col gap-0.5 p-2 flex-1 overflow-y-auto">
                     <FolderList isCollapsed={isCollapsed} />
                 </nav>
+
+                {/* Trash entry */}
+                {isCollapsed ? (
+                    <Tooltip label="Trash">
+                        <button
+                            onClick={() => setShowTrash(!showTrash)}
+                            className={`mx-auto flex items-center justify-center w-9 h-9 rounded-lg transition-colors mb-1 relative ${
+                                showTrash ? 'bg-[var(--color-danger)]/15 text-[var(--color-danger)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-danger)]'
+                            }`}
+                            title="Trash"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            {trashCount > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[var(--color-danger)] text-white text-[8px] font-bold">
+                                    {trashCount > 9 ? '9+' : trashCount}
+                                </span>
+                            )}
+                        </button>
+                    </Tooltip>
+                ) : (
+                    <button
+                        onClick={() => setShowTrash(!showTrash)}
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 mx-1 mb-1 text-sm font-medium transition-colors relative ${
+                            showTrash ? 'bg-[var(--color-danger)]/15 text-[var(--color-danger)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-danger)]'
+                        }`}
+                    >
+                        <Trash2 className="h-4 w-4 shrink-0" />
+                        <span>Trash</span>
+                        <span className={`ml-auto flex items-center justify-center text-[10px] font-medium px-1.5 py-0.5 rounded-full tabular-nums transition-all ${
+                            showTrash ? 'text-[var(--color-danger)] bg-[var(--color-danger)]/10' : 'text-[var(--color-text-muted)] bg-[var(--color-surface-2)]'
+                        }`}>
+                            {trashCount}
+                        </span>
+                    </button>
+                )}
 
                 {/* Footer: Sync Status + Avatar */}
                 <div className="border-t border-[var(--color-border)] p-2">

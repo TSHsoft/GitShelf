@@ -29,6 +29,11 @@ export interface DataSlice {
     updateSettings: (updates: Partial<Settings>) => void
     setLoaded: (loaded: boolean) => void
     resetData: () => void
+    // Trash actions
+    restoreTrashItem: (repoId: string) => void
+    removeTrashItem: (repoId: string) => void
+    emptyTrash: () => void
+    purgeExpiredTrash: (retentionDays: number) => void
 }
 
 export interface UISlice {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Settings, KeyRound, Loader2, Cloud, CloudOff, RefreshCw } from 'lucide-react'
+import { X, Settings, KeyRound, Loader2, Cloud, CloudOff, RefreshCw, Trash2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { getGistBackup } from '@/lib/github'
 import { GitShelfDataSchema, type GitShelfData } from '@/types'
@@ -69,10 +69,22 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             if (backup) {
                 const parsed = GitShelfDataSchema.safeParse(JSON.parse(backup.content))
                 if (parsed.success && Object.keys(parsed.data.repositories).length > 0) {
+                    // Also fetch trash from separate gitshelf_trash.json
+                    let trashData: Record<string, unknown> = {}
+                    try {
+                        const { getGistFile } = await import('@/lib/github/gists')
+                        const trashFile = await getGistFile(t, 'gitshelf_trash.json', backup.id)
+                        if (trashFile?.content) {
+                            trashData = JSON.parse(trashFile.content)
+                        }
+                    } catch {
+                        // Trash file may not exist yet — safe to ignore
+                    }
+
                     setLastCheckedGist({
                         date: backup.updated_at ? new Date(backup.updated_at).getTime() : parsed.data.last_modified,
                         repoCount: Object.keys(parsed.data.repositories).length,
-                        data: parsed.data
+                        data: { ...parsed.data, trash: trashData as GitShelfData['trash'] }
                     })
                 } else {
                     setLastCheckedGist('none')
@@ -256,7 +268,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
 
                         {/* GitHub Token */}
                         <div>
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center justify-between mb-4">
                                 <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text)]">
                                     <KeyRound className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
                                     GitHub Account & Sync
@@ -270,9 +282,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                                     )}
                                 </div>
                             </div>
-                            <p className="text-xs text-[var(--color-text-muted)] mb-4">
-                                Your connected GitHub account enables automatic backups via Gist and provides a higher API rate limit for fetching repositories.
-                            </p>
 
                             <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 flex items-center justify-between">
                                 {githubToken ? (
@@ -324,6 +333,36 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                                         </button>
                                     )}
                                 </div>
+                            </div>
+                        </div>
+
+                        <div className="h-px bg-[var(--color-border)]" />
+
+                        {/* Trash Retention */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-3">
+                                <Trash2 className="h-4 w-4 text-[var(--color-text-muted)]" />
+                                <h3 className="text-sm font-medium text-[var(--color-text)]">Trash Retention</h3>
+                            </div>
+                            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 flex items-center justify-between">
+                                <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] font-medium">
+                                    Empty Trash items older than
+                                </span>
+                                <CustomSelect
+                                    value={String(data.settings.trash_retention_days ?? 30)}
+                                    onChange={(val) => updateSettings({ trash_retention_days: Number(val ?? 30) })}
+                                    options={[
+                                        { value: '7', label: '7 days' },
+                                        { value: '14', label: '14 days' },
+                                        { value: '30', label: '30 days' },
+                                        { value: '60', label: '60 days' },
+                                        { value: '90', label: '90 days' },
+                                        { value: '0', label: 'Never (keep forever)' },
+                                    ]}
+                                    searchable={false}
+                                    clearable={false}
+                                    className="w-[180px]"
+                                />
                             </div>
                         </div>
 

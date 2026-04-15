@@ -49,6 +49,10 @@ GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign i
 - **Three view modes** — Card, Table, and Grouped views
 - **Tokenized Search** — Full-text search across name, owner, description, and language, plus support for `@topic` mentions to instantly filter by GitHub topics
 - **Bulk actions** — Tag, Move, or Delete multiple items at once from the toolbar
+- **Intelligent Trash Bin** — Deleted items are moved to a secure **Trash** rather than being permanently removed, allowing for easy restoration.
+    - **One-click Restore** — Restore items to their original folders instantly
+    - **Configurable Retention** — Automatically clear items from Trash after 7, 14, 30, or 90 days (or keep them forever)
+    - **Sync Isolation** — Trash data is synchronized via Gist separately to ensure peak performance and data safety
 
 ### 🏷️ Tagging & Filtering
 - Create **custom tags** with adjustable color palettes, supporting multiple tags per repo, with **multi-select filtering** to find exactly what you need.

@@ -78,12 +78,19 @@ export const RepositorySchema = z.object({
     added_at: z.number(),
     languages: z.record(z.string(), z.number()).optional(),
     profile_type: z.enum(['user', 'org']).optional(), // Only set when type === 'profile'
+    note: z.string().optional(), // User-written note for this repo
 })
 
 export const SettingsSchema = z.object({
     theme: z.enum(['light', 'dark', 'system']).default('dark'),
     view_mode: z.enum(['table', 'card', 'list']).default('card'),
     backup_interval_minutes: z.number().default(0), // 0 = disabled; valid: 5,10,15,20,25,30
+    trash_retention_days: z.number().default(30),   // 0 = keep forever; e.g. 7, 14, 30, 60, 90
+})
+
+export const TrashedRepoSchema = z.object({
+    repo: RepositorySchema,
+    deletedAt: z.number()
 })
 
 export const GitShelfDataSchema = z.object({
@@ -91,6 +98,7 @@ export const GitShelfDataSchema = z.object({
     last_modified: z.number(),
     last_sync_time: z.number().optional(),
     repositories: z.record(z.string(), RepositorySchema),
+    trash: z.record(z.string(), TrashedRepoSchema).default({}),
     tags: z.record(z.string(), TagSchema),
     folders: z.record(z.string(), FolderSchema).default({}),
     pending_repos: z.array(z.string()).default([]),
@@ -104,6 +112,7 @@ export type Folder = z.infer<typeof FolderSchema>
 export type Repository = z.infer<typeof RepositorySchema>
 export type Settings = z.infer<typeof SettingsSchema>
 export type GitShelfData = z.infer<typeof GitShelfDataSchema>
+export type TrashedRepo = z.infer<typeof TrashedRepoSchema>
 export type ViewMode = 'table' | 'card' | 'list'
 // ...
 export type RepoStatus = 'active' | 'deleted' | 'renamed' | 'stale' | 'archived' | 'not_found'
@@ -118,6 +127,7 @@ export const DEFAULT_DATA: GitShelfData = {
     version: 1,
     last_modified: Date.now(),
     repositories: {},
+    trash: {},
     tags: {},
     folders: {},
     pending_repos: [],
@@ -125,5 +135,6 @@ export const DEFAULT_DATA: GitShelfData = {
         theme: 'dark',
         view_mode: 'card',
         backup_interval_minutes: 0,
+        trash_retention_days: 30,
     },
 }

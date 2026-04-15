@@ -50,15 +50,15 @@ function useSortedRepos(): Repository[] {
             list = list.filter((r) => r.tags.includes(selectedTagId))
         }
 
-        // Filter by search query (plain text)
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase()
             list = list.filter(
                 (r) =>
                     (r.name || '').toLowerCase().includes(q) ||
                     (r.owner || '').toLowerCase().includes(q) ||
-                    (r.description ?? '').toLowerCase().includes(q) ||
-                    (r.language ?? '').toLowerCase().includes(q)
+                    (r.description || '').toLowerCase().includes(q) ||
+                    (r.language || '').toLowerCase().includes(q) ||
+                    (r.note || '').toLowerCase().includes(q)
             )
         }
 
@@ -250,7 +250,7 @@ export const RepoList = React.memo(function RepoList() {
         setConfirmAction({
             isOpen: true,
             title: 'Delete Repos',
-            description: <>Are you sure you want to delete {selectedRepoIds.size} repos?<br/><br/>This action cannot be undone.</>,
+            description: <>Are you sure you want to delete {selectedRepoIds.size} repos?<br/><br/>They will be moved to the Trash.</>,
             variant: 'danger',
             onConfirm: () => {
                 selectedRepoIds.forEach(id => removeRepository(id))

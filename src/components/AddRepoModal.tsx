@@ -22,6 +22,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
 
     // Tag selection state
     const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
+    const [note, setNote] = useState('')
 
     // Close on Escape key
     useEffect(() => {
@@ -122,7 +123,7 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
 
     const handleAdd = () => {
         if (!preview) return
-        addRepository({ ...preview, tags: selectedTagIds })
+        addRepository({ ...preview, tags: selectedTagIds, note: note.trim() || undefined })
         onClose()
     }
 
@@ -266,6 +267,15 @@ export function AddRepoModal({ onClose }: AddRepoModalProps) {
                                     onChange={setSelectedTagIds}
                                 />
                             </div>
+
+                            {/* Note */}
+                            <textarea
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                                placeholder="Note (optional)..."
+                                rows={2}
+                                className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/30 transition-all leading-relaxed"
+                            />
 
                             <button
                                 type="button"

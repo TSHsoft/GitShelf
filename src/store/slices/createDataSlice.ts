@@ -46,6 +46,10 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
         if (!data.pending_repos) {
             data.pending_repos = []
         }
+        // Migration: Ensure trash exists for older backups
+        if (!data.trash) {
+            data.trash = {}
+        }
         const nextRepos: Record<string, Repository> = {}
         Object.entries(data.repositories).forEach(([id, repo]) => {
             nextRepos[id] = withFlags(repo)
@@ -102,6 +106,12 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
             }
             
             const targetRepo = state.data.repositories[keyToRemove]
+
+            const nextTrash = { ...state.data.trash }
+            if (targetRepo) {
+                nextTrash[keyToRemove] = { repo: targetRepo, deletedAt: Date.now() }
+            }
+
             const nextTagToRepos = { ...state.tagToRepos }
             if (targetRepo) {
                 targetRepo.tags.forEach(tagId => {
@@ -114,7 +124,7 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
 
             const { [keyToRemove]: _repo, ...rest } = state.data.repositories
             return {
-                data: { ...state.data, last_modified: Date.now(), repositories: rest },
+                data: { ...state.data, last_modified: Date.now(), repositories: rest, trash: nextTrash },
                 tagToRepos: nextTagToRepos,
                 activeRepoId: state.activeRepoId === id || state.activeRepoId === keyToRemove ? null : state.activeRepoId,
             }
@@ -208,6 +218,7 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
                     repositories: nextRepos,
                     last_modified: Date.now(),
                     settings: { ...state.data.settings, ...validated.settings },
+                    trash: validated.trash || state.data.trash || {},
                 },
                 tagToRepos: buildTagIndex(nextRepos)
             }
@@ -478,6 +489,78 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
                     last_modified: Date.now(),
                     settings: nextSettings,
                 },
+            }
+        }),
+    restoreTrashItem: (repoId) =>
+        set((state) => {
+            const trashItem = state.data.trash?.[repoId]
+            if (!trashItem) return state
+            const targetRepo = trashItem.repo
+            const nextTrash = { ...state.data.trash }
+            delete nextTrash[repoId]
+
+            const repoWithFlags = withFlags(targetRepo)
+            const nextTagToRepos = { ...state.tagToRepos }
+            repoWithFlags.tags.forEach(tagId => {
+                if (!nextTagToRepos[tagId]) nextTagToRepos[tagId] = []
+                if (!nextTagToRepos[tagId].includes(repoWithFlags.id)) {
+                    nextTagToRepos[tagId] = [...nextTagToRepos[tagId], repoWithFlags.id]
+                }
+            })
+
+            return {
+                data: {
+                    ...state.data,
+                    last_modified: Date.now(),
+                    trash: nextTrash,
+                    repositories: { ...state.data.repositories, [repoWithFlags.id]: repoWithFlags }
+                },
+                tagToRepos: nextTagToRepos
+            }
+        }),
+    removeTrashItem: (repoId) =>
+        set((state) => {
+            const nextTrash = { ...state.data.trash }
+            if (nextTrash[repoId]) {
+                delete nextTrash[repoId]
+                return {
+                    data: {
+                        ...state.data,
+                        last_modified: Date.now(),
+                        trash: nextTrash
+                    }
+                }
+            }
+            return state
+        }),
+    emptyTrash: () =>
+        set((state) => ({
+            data: {
+                ...state.data,
+                last_modified: Date.now(),
+                trash: {}
+            }
+        })),
+    purgeExpiredTrash: (retentionDays: number) =>
+        set((state) => {
+            if (retentionDays === 0) return state; // Keeps forever
+            const nextTrash = { ...state.data.trash }
+            const now = Date.now()
+            let changed = false
+            Object.entries(nextTrash).forEach(([id, item]) => {
+                const daysOld = (now - item.deletedAt) / (1000 * 60 * 60 * 24)
+                if (daysOld >= retentionDays) {
+                    delete nextTrash[id]
+                    changed = true
+                }
+            })
+            if (!changed) return state;
+            return {
+                data: {
+                    ...state.data,
+                    last_modified: Date.now(),
+                    trash: nextTrash
+                }
             }
         }),
     setLoaded: (loaded) => set({ isLoaded: loaded }),
