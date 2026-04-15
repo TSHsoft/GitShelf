@@ -173,8 +173,9 @@ export const TrashView = React.memo(function TrashView() {
         title: string
         description: React.ReactNode
         variant: 'danger' | 'warning' | 'default'
+        confirmLabel?: string
         onConfirm: () => void
-    }>({ isOpen: false, title: '', description: '', variant: 'default', onConfirm: () => {} })
+    }>({ isOpen: false, title: '', description: '', variant: 'default', confirmLabel: 'Confirm', onConfirm: () => {} })
 
     const handleRestore = (item: TrashedRepo) => {
         restoreTrashItem(item.repo.id)
@@ -186,6 +187,28 @@ export const TrashView = React.memo(function TrashView() {
             restoreTrashItem(id)
         }
         setSelectedRepoIds(new Set())
+    }
+
+    const confirmRestore = (item: TrashedRepo) => {
+        setConfirmAction({
+            isOpen: true,
+            title: 'Restore Repository',
+            description: <>Are you sure you want to restore <strong>{item.repo.owner}/{item.repo.name}</strong> to your shelf?</>,
+            variant: 'default',
+            confirmLabel: 'Restore',
+            onConfirm: () => handleRestore(item)
+        })
+    }
+
+    const confirmBulkRestore = () => {
+        setConfirmAction({
+            isOpen: true,
+            title: 'Restore Repositories',
+            description: <>Are you sure you want to restore <strong>{selectedRepoIds.size} items</strong> to your shelf?</>,
+            variant: 'default',
+            confirmLabel: 'Restore All',
+            onConfirm: handleBulkRestore
+        })
     }
 
     const handlePurge = (item: TrashedRepo) => {
@@ -224,6 +247,7 @@ export const TrashView = React.memo(function TrashView() {
             title: 'Permanently Delete',
             description: <>Are you sure you want to permanently delete <strong>{item.repo.owner}/{item.repo.name}</strong>?<br /><br />This action cannot be undone.</>,
             variant: 'danger',
+            confirmLabel: 'Delete Forever',
             onConfirm: () => handlePurge(item)
         })
     }
@@ -234,6 +258,7 @@ export const TrashView = React.memo(function TrashView() {
             title: 'Permanently Delete',
             description: <>Are you sure you want to permanently delete <strong>{selectedRepoIds.size} items</strong>?<br /><br />This action cannot be undone.</>,
             variant: 'danger',
+            confirmLabel: 'Delete Forever',
             onConfirm: handleBulkPurge
         })
     }
@@ -244,6 +269,7 @@ export const TrashView = React.memo(function TrashView() {
             title: 'Empty Trash',
             description: <>This will permanently delete all <strong>{items.length}</strong> items in the trash.<br /><br />This action cannot be undone.</>,
             variant: 'danger',
+            confirmLabel: 'Empty Trash',
             onConfirm: handleClearAll
         })
     }
@@ -255,7 +281,7 @@ export const TrashView = React.memo(function TrashView() {
                 title={confirmAction.title}
                 description={confirmAction.description}
                 variant={confirmAction.variant}
-                confirmLabel="Delete Forever"
+                confirmLabel={confirmAction.confirmLabel}
                 onConfirm={() => {
                     confirmAction.onConfirm()
                     setConfirmAction(prev => ({ ...prev, isOpen: false }))
@@ -273,7 +299,7 @@ export const TrashView = React.memo(function TrashView() {
                         </div>
                         <div className="flex items-center gap-2">
                             <button
-                                onClick={handleBulkRestore}
+                                onClick={confirmBulkRestore}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[var(--color-surface)] text-[var(--color-text)] text-xs font-medium border border-[var(--color-border)] hover:bg-[var(--color-surface-2)] transition-all"
                             >
                                 <RotateCcw className="h-3.5 w-3.5 text-[var(--color-accent)]" /> Restore
@@ -359,7 +385,7 @@ export const TrashView = React.memo(function TrashView() {
                                 existsInDatabase={!!data.repositories[item.repo.id]}
                                 folder={item.repo.folder_id ? data.folders?.[item.repo.folder_id] : null}
                                 onToggle={() => toggleSelect(item.repo.id)}
-                                onRestore={handleRestore}
+                                onRestore={confirmRestore}
                                 onPurge={confirmPurge}
                             />
                         ))}
