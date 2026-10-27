@@ -26,6 +26,7 @@ export interface DataSlice {
     bulkMoveReposToFolder: (repoIds: string[], folderId: string | null) => void
     addPendingRepo: (url: string) => void
     removePendingRepo: (url: string) => void
+    setPendingRepos: (repos: string[]) => void
     updateSettings: (updates: Partial<Settings>) => void
     setLoaded: (loaded: boolean) => void
     resetData: () => void

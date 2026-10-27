@@ -55,8 +55,13 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
             nextRepos[id] = withFlags(repo)
         })
 
+        // Preserve any in-memory pending_repos (from eager/remote fetch) rather than wiping with stale local snapshot
+        const existingPending = get().data?.pending_repos || []
+        const incomingPending = data.pending_repos || []
+        const mergedPending = Array.from(new Set([...existingPending, ...incomingPending]))
+
         set({
-            data: { ...data, repositories: nextRepos },
+            data: { ...data, repositories: nextRepos, pending_repos: mergedPending },
             tagToRepos: buildTagIndex(nextRepos),
             isLoaded: true,
             viewMode: data.settings.view_mode ?? 'card',
@@ -480,6 +485,13 @@ export const createDataSlice: StateCreator<GitShelfStore, [], [], DataSlice> = (
                 }
             }
         }),
+    setPendingRepos: (repos) =>
+        set((state) => ({
+            data: {
+                ...state.data,
+                pending_repos: Array.from(new Set(repos))
+            }
+        })),
     updateSettings: (updates) =>
         set((state) => {
             const nextSettings = { ...state.data.settings, ...updates }

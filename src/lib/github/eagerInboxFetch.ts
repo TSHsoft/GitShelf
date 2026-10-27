@@ -11,8 +11,6 @@
  *   https://gist.githubusercontent.com/{login}/{gist_id}/raw/gitshelf_pending.json
  */
 
-import { decryptTokenAsync } from '@/lib/crypto'
-
 let _eagerPromise: Promise<string[] | null> | null = null
 
 export function getEagerInboxPromise(): Promise<string[] | null> | null {
@@ -41,13 +39,10 @@ export function fireEagerInboxFetch() {
 
     _eagerPromise = (async (): Promise<string[] | null> => {
         try {
-            const storedId = localStorage.getItem('_gs_pk_id') ?? undefined
-            const token = await decryptTokenAsync(encToken, storedId)
-            if (!token) return null
-
-            // Fetch ONLY the pending file via raw URL — Secret Gists are accessible without auth headers,
-            // omitting Authorization avoids CORS preflight failures (OPTIONS 403) from gist CDN.
-            const rawUrl = `https://gist.githubusercontent.com/${login}/${gistId}/raw/gitshelf_pending.json`
+            // Secret Gists are accessible via Raw URL without Authorization headers.
+            // We do NOT need to wait for or decrypt the token here.
+            // Append a timestamp cache-buster so GitHub CDN doesn't serve stale edge cache
+            const rawUrl = `https://gist.githubusercontent.com/${login}/${gistId}/raw/gitshelf_pending.json?_t=${Date.now()}`
             const res = await fetch(rawUrl, {
                 cache: 'no-store',
             })

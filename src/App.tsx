@@ -245,54 +245,73 @@ function AppContent() {
 
     // Try to pop the remote pending_repos queue into our local queue
     useEffect(() => {
+        // Wait until local storage/IndexedDB has hydrated to avoid overwriting pending_repos
+        if (!isLoaded || !githubToken || patStatus === 'invalid' || !isOnline) return
+
         const fetchRemoteInbox = async () => {
-            const { gistId } = useStore.getState()
-            if (githubToken && patStatus !== 'invalid' && isOnline) {
-                try {
-                    // Try the eager prefetch result first (started before React mounted)
-                    const eagerPromise = getEagerInboxPromise()
-                    if (eagerPromise) {
-                        clearEagerInboxPromise()
-                        const eagerRepos = await eagerPromise
-                        if (eagerRepos) {
-                            useStore.setState(state => ({
-                                data: { ...state.data, pending_repos: eagerRepos }
-                            }))
+            const currentGistId = useStore.getState().gistId || localStorage.getItem('_gs_gist_id')
+            try {
+                // Try the eager prefetch result first (started before React mounted)
+                const eagerPromise = getEagerInboxPromise()
+                if (eagerPromise) {
+                    clearEagerInboxPromise()
+                    const eagerRepos = await eagerPromise
+                    if (eagerRepos && eagerRepos.length > 0) {
+                        console.log('[Inbox] Loaded repos from eager prefetch:', eagerRepos)
+                        useStore.getState().setPendingRepos(eagerRepos)
+                        return
+                    }
+                }
+
+                // Intermediate fallback: lightweight raw URL fetch with cache-buster if credentials are known
+                const token = await useStore.getState().getDecryptedToken()
+                if (token) {
+                    let userProfile = useStore.getState().userProfile
+                    if (!userProfile) {
+                        try {
+                            const { fetchAuthenticatedUserProfile } = await import('@/lib/github')
+                            userProfile = await fetchAuthenticatedUserProfile(token)
+                            if (userProfile) useStore.getState().setUserProfile(userProfile)
+                        } catch (err) {
+                            console.warn('[Inbox] Failed to get user profile for raw URL fallback:', err)
+                        }
+                    }
+
+                    if (currentGistId && userProfile?.login) {
+                        const { fetchPendingInboxRaw } = await import('@/lib/github/gists')
+                        const remoteRepos = await fetchPendingInboxRaw(token, userProfile.login, currentGistId)
+                        if (remoteRepos && remoteRepos.length > 0) {
+                            console.log('[Inbox] Loaded repos from raw URL:', remoteRepos)
+                            useStore.getState().setPendingRepos(remoteRepos)
                             return
                         }
                     }
 
-                    // Intermediate fallback: lightweight raw URL fetch if credentials are known
-                    const token = await useStore.getState().getDecryptedToken()
-                    if (token) {
-                        const { userProfile } = useStore.getState()
-                        if (gistId && userProfile?.login) {
-                            const { fetchPendingInboxRaw } = await import('@/lib/github/gists')
-                            const remoteRepos = await fetchPendingInboxRaw(token, userProfile.login, gistId)
-                            if (remoteRepos) {
-                                useStore.setState(state => ({
-                                    data: { ...state.data, pending_repos: remoteRepos }
-                                }))
-                                return
-                            }
+                    // Ultimate fallback: full GitHub Gist API fetch
+                    const { getGistFile } = await import('@/lib/github/gists')
+                    const result = await getGistFile(token, 'gitshelf_pending.json', currentGistId)
+                    if (result) {
+                        if (result.id) {
+                            useStore.getState().setGistId(result.id)
+                            localStorage.setItem('_gs_gist_id', result.id)
                         }
-
-                        // Ultimate fallback: full API fetch (first visit or no cached gistId)
-                        const { getGistFile } = await import('@/lib/github/gists')
-                        const result = await getGistFile(token, 'gitshelf_pending.json', gistId)
-                        if (result) {
-                            if (!gistId) useStore.getState().setGistId(result.id)
+                        try {
                             const remoteRepos = JSON.parse(result.content)
-                            if (Array.isArray(remoteRepos)) {
-                                useStore.setState(state => ({
-                                    data: { ...state.data, pending_repos: remoteRepos }
-                                }))
+                            if (Array.isArray(remoteRepos) && remoteRepos.length > 0) {
+                                console.log('[Inbox] Loaded repos from Gist API:', remoteRepos)
+                                useStore.getState().setPendingRepos(remoteRepos)
+                            } else {
+                                console.log('[Inbox] Gist API returned empty or non-array pending repos:', result.content)
                             }
+                        } catch (parseErr) {
+                            console.error('[Inbox] Failed to parse gitshelf_pending.json content:', parseErr, result.content)
                         }
+                    } else {
+                        console.log('[Inbox] getGistFile found no gitshelf_pending.json in Gist')
                     }
-                } catch (e) { 
-                    console.error('Failed to sync remote inbox', e) 
                 }
+            } catch (e) { 
+                console.error('Failed to sync remote inbox:', e) 
             }
         }
 
@@ -312,7 +331,7 @@ function AppContent() {
 
         document.addEventListener('visibilitychange', handleVisibilityChange)
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }, [githubToken, patStatus, isOnline])
+    }, [githubToken, patStatus, isOnline, isLoaded])
 
     // Extension Integration: Proactively push auth data when ready
     useEffect(() => {

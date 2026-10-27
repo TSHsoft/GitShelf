@@ -150,7 +150,8 @@ export async function fetchPendingInboxRaw(_token: string, login: string, gistId
     try {
         // Secret Gists are accessible via Raw URL without Authorization headers.
         // Omitting Authorization prevents CORS preflight OPTIONS 403 error from gist CDN.
-        const rawUrl = `https://gist.githubusercontent.com/${login}/${gistId}/raw/gitshelf_pending.json`
+        // Append a timestamp cache-buster so GitHub CDN doesn't serve stale edge cache
+        const rawUrl = `https://gist.githubusercontent.com/${login}/${gistId}/raw/gitshelf_pending.json?_t=${Date.now()}`
         const res = await fetch(rawUrl, {
             cache: 'no-store',
         })
