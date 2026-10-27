@@ -298,10 +298,15 @@ function AppContent() {
 
         fetchRemoteInbox()
 
-        // Re-fetch when the app becomes visible again (e.g. user switches back to it)
+        // Re-fetch when the app becomes visible again, with a 30s cooldown to prevent redundant fetches
+        let lastFetchTime = Date.now()
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
-                fetchRemoteInbox()
+                const now = Date.now()
+                if (now - lastFetchTime > 30000) {
+                    lastFetchTime = now
+                    fetchRemoteInbox()
+                }
             }
         }
 
@@ -324,10 +329,15 @@ function AppContent() {
         };
 
         const handleExtensionMessage = (event: MessageEvent) => {
-            const { type } = event.data;
+            // Only accept messages from current origin
+            if (event.source !== window) return;
+
+            const { type } = event.data || {};
+            const targetOrigin = window.location.origin;
+
             if (type === 'EXT_REQUEST_AUTH' || type === 'EXT_AUTH_REQUEST') {
                 getAuth().then(auth => {
-                    if (auth) window.postMessage({ type: 'EXT_AUTH_DATA', payload: auth }, '*');
+                    if (auth) window.postMessage({ type: 'EXT_AUTH_DATA', payload: auth }, targetOrigin);
                 });
             }
 
@@ -335,7 +345,7 @@ function AppContent() {
                 try {
                     const parsed = RepositorySchema.parse(event.data.payload);
                     useStore.getState().addRepository(parsed);
-                    window.postMessage({ type: 'EXT_SAVE_SUCCESS' }, '*');
+                    window.postMessage({ type: 'EXT_SAVE_SUCCESS' }, targetOrigin);
                 } catch (err) {
                     console.error("Extension save validation failed:", err);
                 }
@@ -349,10 +359,10 @@ function AppContent() {
                         const token = await useStore.getState().getDecryptedToken();
                         const repo = await fetchRepositoryGraphQL(path, token);
                         useStore.getState().addRepository(repo);
-                        window.postMessage({ type: 'EXT_SAVE_SUCCESS' }, '*');
+                        window.postMessage({ type: 'EXT_SAVE_SUCCESS' }, targetOrigin);
                     } catch (err) {
                         console.error("Extension path-based save failed:", err);
-                        window.postMessage({ type: 'EXT_SAVE_FAILURE', error: String(err) }, '*');
+                        window.postMessage({ type: 'EXT_SAVE_FAILURE', error: String(err) }, targetOrigin);
                     }
                 };
                 

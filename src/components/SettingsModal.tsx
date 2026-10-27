@@ -29,7 +29,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     const [showRestoreConfirm, setShowRestoreConfirm] = useState(false)
     const [isRestoring, setIsRestoring] = useState(false)
 
-    const { rateLimitRemaining, isRateLimited } = useGithubRateLimit()
+    const { rateLimitRemaining, isRateLimited, isRateLimitWarning } = useGithubRateLimit()
 
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
@@ -276,7 +276,13 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
 
                                 <div className="flex items-center gap-2">
                                     {githubToken && rateLimitRemaining !== null && (
-                                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider uppercase border ${isRateLimited ? 'bg-[var(--color-danger)]/10 text-[var(--color-danger)] border-[var(--color-danger)]/20' : 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-[var(--color-accent)]/20'}`}>
+                                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider uppercase border ${
+                                            isRateLimited
+                                                ? 'bg-[var(--color-danger)]/10 text-[var(--color-danger)] border-[var(--color-danger)]/20'
+                                                : isRateLimitWarning
+                                                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                                    : 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-[var(--color-accent)]/20'
+                                        }`}>
                                             API Quota: {rateLimitRemaining.toLocaleString()}
                                         </div>
                                     )}

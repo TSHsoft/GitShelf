@@ -47,17 +47,17 @@ export function AuthCallback() {
 
             const rawToken = data.access_token
 
-            // Step 2: Save token (encrypted)
-            await setGithubToken(rawToken)
-
-            // Step 3: Fetch user profile
+            // Step 2: Fetch user profile first (so profile.id is known for V3 encryption)
             setStatus('Loading your profile...')
             try {
                 const profile = await fetchAuthenticatedUserProfile(rawToken)
-                if (profile) setUserProfile(profile)
+                if (profile) await setUserProfile(profile)
             } catch {
                 console.warn('Could not load profile, continuing anyway')
             }
+
+            // Step 3: Save token (encrypted with V3 salt if profile ID is available)
+            await setGithubToken(rawToken)
 
             // Step 4: Restore from Gist
             setStatus('Restoring your bookmarks...')

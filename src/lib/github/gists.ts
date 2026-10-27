@@ -146,11 +146,12 @@ export async function updateGistFile(token: string, filename: string, content: s
  * Uses the Gist raw URL to avoid downloading the entire Gist
  * (which includes the potentially large database file).
  */
-export async function fetchPendingInboxRaw(token: string, login: string, gistId: string): Promise<string[] | null> {
+export async function fetchPendingInboxRaw(_token: string, login: string, gistId: string): Promise<string[] | null> {
     try {
+        // Secret Gists are accessible via Raw URL without Authorization headers.
+        // Omitting Authorization prevents CORS preflight OPTIONS 403 error from gist CDN.
         const rawUrl = `https://gist.githubusercontent.com/${login}/${gistId}/raw/gitshelf_pending.json`
         const res = await fetch(rawUrl, {
-            headers: { Authorization: `token ${token}` },
             cache: 'no-store',
         })
         if (!res.ok) return null

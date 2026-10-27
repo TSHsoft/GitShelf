@@ -52,8 +52,10 @@ export function useGithubRateLimit() {
 
     const rateLimitRemaining = useStore(state => state.rateLimitRemaining)
 
-    // Safety buffer of 5
+    // Hard block when remaining is 5 or fewer to prevent complete lockout
     const isRateLimited = rateLimitRemaining !== null && rateLimitRemaining <= 5
+    // Early warning when remaining is below 50
+    const isRateLimitWarning = rateLimitRemaining !== null && rateLimitRemaining < 50
 
-    return { rateLimitRemaining, isRateLimited }
+    return { rateLimitRemaining, isRateLimited, isRateLimitWarning }
 }

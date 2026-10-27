@@ -45,10 +45,10 @@ export function fireEagerInboxFetch() {
             const token = await decryptTokenAsync(encToken, storedId)
             if (!token) return null
 
-            // Fetch ONLY the pending file via raw URL — no full Gist download
+            // Fetch ONLY the pending file via raw URL — Secret Gists are accessible without auth headers,
+            // omitting Authorization avoids CORS preflight failures (OPTIONS 403) from gist CDN.
             const rawUrl = `https://gist.githubusercontent.com/${login}/${gistId}/raw/gitshelf_pending.json`
             const res = await fetch(rawUrl, {
-                headers: { Authorization: `token ${token}` },
                 cache: 'no-store',
             })
             if (!res.ok) return null

@@ -72,6 +72,12 @@ export function PendingInbox() {
                     const { updateGistFile } = await import('@/lib/github/gists');
                     const remainingRepos = useStore.getState().data.pending_repos || [];
                     await updateGistFile(token, 'gitshelf_pending.json', JSON.stringify(remainingRepos));
+
+                    // If new repositories were added, sync to Gist so remote backup stays up to date
+                    if (processedCount > 0) {
+                        const { executeGistBackup } = await import('@/hooks/useGistSync');
+                        executeGistBackup().catch(err => console.error('Failed to sync new inbox repos to Gist:', err));
+                    }
                 }
             } catch (err) {
                 console.error('Failed to sync cleared status to remote wrapper', err);
