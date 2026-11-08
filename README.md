@@ -30,6 +30,17 @@ GitShelf is accompanied by a **Dual-Browser Certified extension** for **Google C
 
 GitShelf is a **browser-based bookmark manager for GitHub repositories**. Sign in with your GitHub account, add any public repo you care about, tag and filter them, and keep your collection in sync — all stored privately in your own GitHub Gist as JSON. No server. No database. No tracking.
 
+### ⭐ Independent Bookmark Collection (Not GitHub Stars)
+
+GitShelf maintains its own independent bookmark collection and does **not** automatically import, read, or synchronize your GitHub Starred Repositories.
+
+- **Independent Collection:** Bookmarks are managed separately from your GitHub Stars.
+- **No Star Required:** Bookmark any public GitHub repository without starring it on GitHub.
+- **Your Own Organization:** Organize repositories using custom folders, tags, favorites, and filters without affecting your GitHub account's starred list.
+- **Private Storage:** Your collection is stored directly in your own private GitHub Gist.
+
+> GitShelf is designed to be your personal repository library, not a replacement for GitHub's Star feature.
+
 ---
 
 ## 🚀 Features
