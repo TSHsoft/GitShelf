@@ -256,7 +256,7 @@ function AppContent() {
                 if (eagerPromise) {
                     clearEagerInboxPromise()
                     const eagerRepos = await eagerPromise
-                    if (eagerRepos && eagerRepos.length > 0) {
+                    if (Array.isArray(eagerRepos)) {
                         console.log('[Inbox] Loaded repos from eager prefetch:', eagerRepos)
                         useStore.getState().setPendingRepos(eagerRepos)
                         return
@@ -280,7 +280,7 @@ function AppContent() {
                     if (currentGistId && userProfile?.login) {
                         const { fetchPendingInboxRaw } = await import('@/lib/github/gists')
                         const remoteRepos = await fetchPendingInboxRaw(token, userProfile.login, currentGistId)
-                        if (remoteRepos && remoteRepos.length > 0) {
+                        if (Array.isArray(remoteRepos)) {
                             console.log('[Inbox] Loaded repos from raw URL:', remoteRepos)
                             useStore.getState().setPendingRepos(remoteRepos)
                             return
@@ -297,11 +297,11 @@ function AppContent() {
                         }
                         try {
                             const remoteRepos = JSON.parse(result.content)
-                            if (Array.isArray(remoteRepos) && remoteRepos.length > 0) {
+                            if (Array.isArray(remoteRepos)) {
                                 console.log('[Inbox] Loaded repos from Gist API:', remoteRepos)
                                 useStore.getState().setPendingRepos(remoteRepos)
                             } else {
-                                console.log('[Inbox] Gist API returned empty or non-array pending repos:', result.content)
+                                console.log('[Inbox] Gist API returned non-array pending repos:', result.content)
                             }
                         } catch (parseErr) {
                             console.error('[Inbox] Failed to parse gitshelf_pending.json content:', parseErr, result.content)
