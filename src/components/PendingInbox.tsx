@@ -39,12 +39,20 @@ export function PendingInbox() {
         setIsProcessing(true);
         setErrorMsg('');
         let processedCount = 0;
+        let newlyAddedCount = 0;
         try {
             const { fetchRepositoryGraphQL } = await import('@/lib/github');
             const token = await useStore.getState().getDecryptedToken();
             const addRepository = useStore.getState().addRepository;
 
             for (const url of pendingRepos) {
+                // If the repo already exists in our shelf, simply remove it from pending inbox
+                if (getItemStatus(url) === 'exists') {
+                    removePendingRepo(url);
+                    processedCount++;
+                    continue;
+                }
+
                 try {
                     const cleanUrl = url.split(/[?#]/)[0];
                     const match = cleanUrl.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([^/\s]+\/[^/\s]+)/i);
@@ -53,6 +61,7 @@ export function PendingInbox() {
                     const repo = await fetchRepositoryGraphQL(path, token);
                     addRepository(repo);
                     processedCount++;
+                    newlyAddedCount++;
                 } catch (err) {
                     console.error(`Failed to process pending repo ${url}:`, err);
                 }
@@ -74,7 +83,7 @@ export function PendingInbox() {
                     await updateGistFile(token, 'gitshelf_pending.json', JSON.stringify(remainingRepos));
 
                     // If new repositories were added, sync to Gist so remote backup stays up to date
-                    if (processedCount > 0) {
+                    if (newlyAddedCount > 0) {
                         const { executeGistBackup } = await import('@/hooks/useGistSync');
                         executeGistBackup().catch(err => console.error('Failed to sync new inbox repos to Gist:', err));
                     }
